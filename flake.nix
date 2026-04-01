@@ -10,10 +10,16 @@
         system = "aarch64-linux";
         modules = [
           nixos-wsl.nixosModules.default
-          {
+          ({ pkgs, ... }: {
             system.stateVersion = "25.05";
+            networking.hostName = "pathfinder-wsl";
             wsl.enable = true;
-          }
+	    wsl.defaultUser = "jacob";
+	    wsl.interop.register = true;
+	    wsl.ssh-agent.enable = true;
+	    wsl.startMenuLaunchers = true;
+	    wsl.useWindowsDriver = true;
+          })
         ];
       };
     };
