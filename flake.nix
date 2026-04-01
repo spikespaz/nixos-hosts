@@ -29,6 +29,13 @@
 	      git
 	      fastfetch
 	    ];
+
+	    programs.fish.enable = true;
+	    programs.bash.interactiveShellInit = ''
+	      if command -v fish &>/dev/null; then
+	        exec fish
+	      fi
+	    '';
           })
         ];
       };
