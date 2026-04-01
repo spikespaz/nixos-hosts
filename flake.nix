@@ -4,7 +4,15 @@
     nixos-wsl.url = "github:nix-community/NixOS-WSL/main";
   };
 
-  outputs = { self, nixpkgs, nixos-wsl, ... }: {
+  outputs = { self, nixpkgs, nixos-wsl, ... }: let
+    inherit (nixpkgs) lib;
+    eachSystem = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
+    pkgsFor = eachSystem (system:
+      import nixpkgs {
+        localSystem.system = system;
+      }
+    );
+  in {
     nixosConfigurations = {
       pathfinder-wsl = nixpkgs.lib.nixosSystem {
         system = "aarch64-linux";
@@ -40,6 +48,8 @@
         ];
       };
     };
+
+    formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor; 
   };
 }
 
