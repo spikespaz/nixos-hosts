@@ -30,11 +30,13 @@
                 experimental-features = [ "nix-command" "flakes" ];
               };
 
-              environment.systemPackages = with pkgs; [ git fastfetch ];
+              environment.systemPackages = with pkgs; [ fastfetch ];
 
               programs.fish.enable = true;
               programs.bash.interactiveShellInit =
                 "  if command -v fish &>/dev/null; then\n    exec fish\n  fi\n";
+
+              programs.git.enable = true;
 
               programs.neovim.enable = true;
               programs.neovim.defaultEditor = true;
