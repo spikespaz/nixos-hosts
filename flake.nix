@@ -19,6 +19,10 @@
 	    wsl.ssh-agent.enable = true;
 	    wsl.startMenuLaunchers = true;
 	    wsl.useWindowsDriver = true;
+            
+	    nix.settings = {
+              experimental-features = ["nix-command" "flakes"];
+	    };
           })
         ];
       };
