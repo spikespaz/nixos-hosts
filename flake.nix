@@ -16,7 +16,7 @@
           system = "aarch64-linux";
           modules = [
             nixos-wsl.nixosModules.default
-            ({ pkgs, ... }: {
+            ({ pkgs, config, ... }: {
               system.stateVersion = "25.05";
               networking.hostName = "pathfinder-wsl";
               wsl.enable = true;
@@ -30,11 +30,14 @@
                 experimental-features = [ "nix-command" "flakes" ];
               };
 
-              environment.systemPackages = with pkgs; [ neovim git fastfetch ];
+              environment.systemPackages = with pkgs; [ git fastfetch ];
 
               programs.fish.enable = true;
               programs.bash.interactiveShellInit =
                 "  if command -v fish &>/dev/null; then\n    exec fish\n  fi\n";
+
+              programs.neovim.enable = true;
+              programs.neovim.defaultEditor = true;
             })
           ];
         };
