@@ -135,6 +135,10 @@ If it's hard to write a single Pathwise summary for a change, that's a strong si
 
 [^2]: See [Mechanical Consequences](#mechanical-consequences).
 
+### Pre-commit self-check
+
+Before every commit, re-read your draft summary and audit it against this specification — not just the "and" test and path test, but the full set of conventions: naming, phrasing, granularity, mechanical consequences, and the "What NOT To Do" list. This is not optional — it is a blocking check. If any rule is violated, stop and fix before committing. Do not commit with the intent to fix later; the rebase cost compounds and the mistake may propagate into review.
+
 ## What NOT To Do
 
 - Do **not** use Conventional Commits prefixes (`fix:`, `feat:`, `chore:`, etc.)
