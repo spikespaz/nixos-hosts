@@ -129,6 +129,18 @@ WSL
 wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git merge --ff-only origin/<branch>'
 ```
 
+## Syncing WSL branches
+
+When syncing WSL branches with origin, always rebase — never `git reset --hard origin/<branch>`. Rebase surfaces conflicts between unpushed local work and origin; reset silently discards local commits.
+
+```bash
+# correct: rebase preserves local work
+git rebase origin/<branch>
+
+# wrong: reset destroys unpushed commits
+git reset --hard origin/<branch>
+```
+
 ## Notes
 
 - The `+` prefix in the push refspec force-updates the temp branch, which is safe since it exists only for synchronization.
