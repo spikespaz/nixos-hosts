@@ -13,7 +13,7 @@ When working on a NixOS flake repository from a Windows filesystem, `nix` comman
 
 ## Setup
 
-The bridge uses a WSL-native clone of the same repository, connected as a git remote from the Windows side. Nix operations run in a dedicated git worktree inside `.claude/worktrees/` on the WSL clone — never on the main working tree.
+The bridge uses a WSL-native clone of the same repository, connected via bidirectional git remotes. Nix operations run in a dedicated git worktree inside `.claude/worktrees/` on the WSL clone — never on the main working tree.
 
 ### Prerequisites
 
@@ -23,13 +23,21 @@ The bridge uses a WSL-native clone of the same repository, connected as a git re
   git config --global --add safe.directory '//wsl$/NixOS/home/jacob/nixos-hosts'
   ```
 
-### Adding the remote (once per Windows worktree)
+### Adding remotes (once per clone)
 
-From the Windows worktree:
+From the Windows worktree, add a remote pointing to the WSL clone:
 
 ```
 git remote add wsl '//wsl$/NixOS/home/jacob/nixos-hosts'
 ```
+
+From the WSL clone, add a remote pointing to the Windows worktree:
+
+```
+git remote add windows '/mnt/c/Users/Jacob/Projects/nixos-hosts'
+```
+
+Both sides can now push and pull directly using native filesystem translation.
 
 ### Creating a WSL worktree (once per branch)
 
@@ -43,30 +51,53 @@ All nix operations happen in this WSL worktree. The user's main WSL working tree
 
 ## Workflow
 
-### 1. Push current state to WSL
+### Windows → WSL: push via temporary branch
+
+Direct `git push wsl <branch>` fails with `receive.denyCurrentBranch` when the branch is checked out in a WSL worktree. Work around this by pushing to a temporary ref, then fast-forwarding the worktree.
 
 From the Windows worktree:
 
 ```
-git push wsl <branch-name>
+git push wsl +HEAD:refs/heads/tmp/bridge-sync
 ```
 
-### 2. Update and run nix commands in the WSL worktree
+Then update the WSL worktree and run nix commands:
 
 ```
-wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git pull && <nix command>'
+wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git merge --ff-only tmp/bridge-sync && <nix command>'
+```
+
+If the WSL worktree has local commits that Windows doesn't (e.g., a nix-generated lockfile commit), rebase instead:
+
+```
+wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git rebase tmp/bridge-sync'
+```
+
+Clean up the temporary branch after syncing:
+
+```
+wsl -d NixOS -- bash -c 'cd ~/nixos-hosts && git branch -d tmp/bridge-sync'
 ```
 
 If the WSL worktree doesn't exist yet, create it first (see Setup).
 
-Common operations:
+Common nix operations:
 
+- `nix eval .#<attr>` — evaluate an attribute (verify config)
 - `nix flake lock` — regenerate lockfile after input changes
-- `nix flake check` — validate the flake
 - `nix build .#<target>` — build a derivation
 - `nix fmt` — format with the flake's formatter
 
-### 3. Copy results back (preferred) or commit in WSL
+### WSL → Windows: fetch and fast-forward
+
+```
+git fetch wsl <branch-name>
+git merge wsl/<branch-name> --ff-only
+```
+
+Always use `--ff-only` to avoid divergent histories.
+
+### Bringing nix-generated files back to Windows
 
 When nix modifies files (e.g., `flake.lock`), prefer copying via the UNC mount:
 
@@ -77,16 +108,8 @@ git add flake.lock
 
 This keeps commits on the Windows side with the correct identity and co-author trailers. Only commit from WSL when necessary (e.g., if the nix command produces many scattered file changes).
 
-### 4. If committed from WSL, fetch back
-
-```
-git fetch wsl <branch-name>
-git merge wsl/<branch-name> --ff-only
-```
-
-Always use `--ff-only` to avoid divergent histories.
-
 ## Notes
 
+- The `+` prefix in the push refspec force-updates the temp branch, which is safe since it exists only for synchronization.
 - Commits made from WSL will use WSL's git identity — ensure it matches or amend afterward.
-- This bridge is bidirectional: changes flow Windows → WSL via `push`, and WSL → Windows via `fetch`/`ff`.
+- This bridge is bidirectional: changes flow Windows → WSL via temp branch push, and WSL → Windows via `fetch`/`ff-only`.
