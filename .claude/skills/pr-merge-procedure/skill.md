@@ -15,30 +15,37 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
 
 2. **User merges one PR.** The agent does not merge — the user clicks merge on GitHub or uses `gh pr merge`.
 
-3. **Agent rebases remaining branches.**
+3. **Agent fetches and checks all open branches.** Before rebasing any single branch, fetch origin and compare every open PR branch against the new master. This ensures no branch is missed.
    ```bash
-   git fetch origin master
-   # for each remaining PR branch:
+   git fetch origin --prune
+   # for each open PR branch:
+   git log --oneline origin/<branch> --not origin/master | wc -l   # branch-only commit count
+   git diff origin/master..origin/<branch> --stat                  # branch-only file changes
+   ```
+   Report the full picture before starting rebases. Rebase all affected branches, not just the one the user asked about.
+
+4. **Agent rebases each branch.**
+   ```bash
    git checkout <branch>
    git rebase origin/master
    ```
    Commits from the just-merged PR should be skipped automatically (patch-id matching). If any branch shows conflicts or retains commits that should have been absorbed, stop and report before continuing.
 
-4. **Agent verifies.**
+5. **Agent verifies.** Both checks are required — log for commit correctness, diff stat for file correctness.
    ```bash
    git log --oneline HEAD --not origin/master   # only branch-specific commits should remain
    git diff origin/master..HEAD --stat           # only branch-specific files should differ
    ```
 
-5. **Agent pushes if clean.**
+6. **Agent pushes if clean.**
    ```bash
    git push origin <branch> --force-with-lease
    ```
    Only force-push after verifying the rebase is clean. If anything looks wrong, report to the user and wait.
 
-6. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes.
+7. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes.
 
-7. **Repeat** from step 2 until all PRs are merged.
+8. **Repeat** from step 2 until all PRs are merged.
 
 ### When to use
 
