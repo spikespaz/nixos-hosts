@@ -113,7 +113,7 @@ These are five separate commits — not one "update readme" commit. The first cr
 
 Some multi-file commits are unavoidable because the secondary file changes are mechanical consequences of the primary action — not independent concerns. These do not violate granularity:
 
-- **Generated lockfiles** (`Cargo.lock`, `flake.lock`) updated alongside their manifest.
+- **Generated lockfiles** (`Cargo.lock`, `flake.lock`) updated alongside their manifest. **Each commit must carry only its own lockfile delta.** When multiple manifest changes are committed separately, regenerate the lockfile incrementally at each commit — do not batch all lock changes into one commit and squash it into the last manifest commit. A lockfile update that includes entries for inputs added by earlier commits violates scope, even though it is mechanically correct.
 - **Module declarations** (`mod foo;` in `lib.rs`/`mod.rs`) added when creating a new file.
 - **Downstream reference removal** when the thing being removed would otherwise break the build. The summary names the singular intent, not the cleanup. Changes at broader scope produce shorter paths — compensate with a more descriptive summary.
 - **Formatter configuration and format application** should be separate commits. When CI requires formatted code at every commit, the config commit may include the format run as an accommodation — note this in the body.
