@@ -1,0 +1,95 @@
+---
+name: branch-rebase
+description: Rebase PR branches onto upstream, split branches by topic, and recover from bad rebases. Default procedure for keeping branches current — not just for recovery.
+---
+
+# Branch Rebase
+
+## Rebasing onto upstream
+
+### 1. Fetch upstream (don't switch branches)
+
+```bash
+git fetch origin master
+```
+
+Do not `git checkout master && git pull` — fetch updates the remote tracking ref, which is all `rebase` needs.
+
+### 2. Rebase
+
+```bash
+git rebase origin/master
+```
+
+Git automatically skips commits whose patch content already exists upstream (detected via `git patch-id`). Commits that were part of the branch but are now on master are dropped with a `skipped previously applied commit` warning. Only genuinely new commits are replayed.
+
+If conflicts arise, git stops at each one:
+
+```bash
+# resolve conflicts in the file
+git add <resolved-files>
+git rebase --continue
+```
+
+### 3. Verify
+
+```bash
+git log --oneline HEAD --not origin/master   # should show only new commits
+```
+
+## Splitting a branch by topic
+
+When a branch mixes two independent topics:
+
+1. Rebase the full branch onto `origin/master` first (drops duplicates)
+2. Create the second branch from the same base:
+   ```bash
+   git checkout -b <topic-b-branch> origin/master
+   git cherry-pick <commits-for-topic-b>
+   ```
+3. Drop topic B commits from the original branch:
+   ```bash
+   git checkout <topic-a-branch>
+   git rebase -i origin/master   # delete the topic-b lines
+   ```
+
+Both branches now cleanly extend master with only their own commits.
+
+## Diagnosing merge-base divergence
+
+When a PR shows conflicts with its target branch:
+
+```bash
+git merge-base HEAD origin/master
+git log --oneline HEAD --not origin/master   # branch-only commits
+git log --oneline origin/master --not HEAD   # master-only commits
+```
+
+If the branch has commits that are content-identical to master but with different hashes (from a reorder, cherry-pick, or manual rebuild), `git rebase origin/master` resolves this automatically — the duplicates are detected and skipped.
+
+## Recovery via reflog
+
+When a rebase or manual operation has gone wrong:
+
+```bash
+git reflog <branch> --oneline -20
+```
+
+Find the state before the bad operation (typically before a `branch: Reset to` or unexpected `cherry-pick` sequence), then restore:
+
+```bash
+git checkout -B <branch> <good-ref>
+```
+
+The bad state remains in the reflog if you need it later.
+
+## Prefer rebase over manual cherry-picks
+
+**Always use `git rebase` instead of reconstructing a branch from scratch with cherry-picks.** Rebase:
+
+- Detects and skips duplicate commits automatically (patch-id matching)
+- Stops on conflicts for incremental resolution
+- Preserves commit metadata (author, date)
+- Produces clean linear history
+
+Manual cherry-pick reconstruction bypasses duplicate detection, forces you to manually select commits, and creates new objects for commits that are already upstream. The only case for manual cherry-picks is when you need to **edit** commit content during transfer (see `pr-minification-split`).
