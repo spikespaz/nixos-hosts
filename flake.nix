@@ -13,7 +13,7 @@
       eachSystem = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
       pkgsFor =
         eachSystem (system: import nixpkgs { localSystem.system = system; });
-      crossPkgsFor = eachSystem (buildSystem:
+      pkgsCrossFor = eachSystem (buildSystem:
         import nixpkgs {
           localSystem.system = buildSystem;
           crossSystem.system = "x86_64-linux";
@@ -74,7 +74,7 @@
           name = "birdboot-images"
             + lib.optionalString isCross "-${hostSystem}";
           images = if isCross then
-            let pkgs = crossPkgsFor.${buildSystem};
+            let pkgs = pkgsCrossFor.${buildSystem};
             in (mkBirdboot { inherit pkgs; }).config.system.build.images
           else
             self.nixosConfigurations.birdboot-portable.config.system.build.images;
