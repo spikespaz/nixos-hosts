@@ -87,6 +87,15 @@ The agent rebases all PR branches in a predetermined order, then force-pushes ea
 - **No merging.** The agent prepares branches but does not merge. The user or CI merges.
 - **Abort on conflict.** If any rebase produces conflicts that don't auto-resolve, stop and report. Do not resolve conflicts silently in automatic mode — that requires user judgment.
 
+## Interactive git history editing
+
+The user may switch to rapid-fire chat mode to drive git history edits directly — rebases, rewords, reorders, drops. During this mode:
+
+- Stay responsive and brief. Confirm what was asked, flag problems immediately, no unsolicited elaboration.
+- Execute exactly what the user asks. Do not batch or reinterpret multiple instructions into one operation.
+- After each operation, report the result concisely (new commit list, conflict if any).
+- PR text updates still apply — after any push during interactive editing, verify titles and bodies are still accurate.
+
 ## PR review process
 
 PRs are reviewed bidirectionally — the user reviews agent work, and the agent reviews its own work (via pathwise-audit or spot-check). Review comments on GitHub must be attributable.
