@@ -31,7 +31,7 @@
                 experimental-features = [ "nix-command" "flakes" ];
               };
 
-              environment.systemPackages = with pkgs; [ fastfetch ];
+              environment.systemPackages = with pkgs; [ fastfetch jq ];
 
               programs.fish.enable = true;
               programs.bash.interactiveShellInit =
