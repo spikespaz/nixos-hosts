@@ -76,6 +76,17 @@ git rebase --continue
 
 This replaces the single commit with two properly scoped ones. Works for any number of splits.
 
+## Check worktree state before operating
+
+Before rebasing, switching, or force-pushing a branch, verify which branches are checked out where:
+
+```bash
+git worktree list
+git branch -vv
+```
+
+A branch checked out in a worktree cannot be updated from outside that worktree. Operations on the wrong worktree silently affect a different branch than intended.
+
 ## Diagnosing merge-base divergence
 
 When a PR shows conflicts with its target branch:
