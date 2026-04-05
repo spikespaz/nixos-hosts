@@ -132,13 +132,24 @@ When commenting on GitHub PRs with commit hashes (e.g., "Fixed in abc1234"), pus
 
 ## Deleting merged branches
 
-Before deleting a local branch after its PR merges, verify the content reached master. GitHub merge strategies (squash, rebase) create different commit hashes, so check by diffing files — not by matching SHAs:
+Before deleting a local branch after its PR merges, verify the content reached master. Use a dry-run rebase to check efficiently — if all commits are skipped (patch-id match), the content is on master:
 
 ```bash
-git diff <local-branch> origin/master -- <files-changed-by-branch>
+git rebase origin/master --dry-run 2>&1   # not a real flag — use the count method below
 ```
 
-Empty diff confirms the content is on master. If the diff is non-empty, the branch has unpushed work — ask the user before deleting.
+Since git doesn't have `--dry-run` for rebase, compare commit counts before and after:
+
+```bash
+# count branch-only commits before rebase
+git log --oneline <branch> --not origin/master | wc -l
+# rebase
+git rebase origin/master
+# if all commits were skipped, the branch tip equals origin/master
+git diff <branch> origin/master --stat
+```
+
+Empty diff and zero remaining commits confirms safe deletion. If any commits survive or the diff is non-empty, the branch has content not on master — ask the user before deleting.
 
 ## Never re-create changes manually
 
