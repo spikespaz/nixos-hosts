@@ -2,7 +2,7 @@
 
 ## Commit Discipline
 
-This repository uses **Pathwise Commit Summaries** (see `skills/pathwise-commit/skill.md`).
+This repository uses **Pathwise Commit Summaries** (see `.claude/skills/pathwise-commit/skill.md`).
 
 ### Session Workflow
 
