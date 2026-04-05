@@ -91,6 +91,12 @@ The agent rebases all PR branches in a predetermined order, then force-pushes ea
 
 PRs are reviewed bidirectionally — the user reviews agent work, and the agent reviews its own work (via pathwise-audit or spot-check). Review comments on GitHub must be attributable.
 
+### Reading reviews
+
+When reading PR reviews and comments, pay attention to timestamps. Comments may be stale if the branch has been force-pushed since the review was written.
+
+GitHub reviews can be in a `PENDING` state — the user wrote comments but hasn't submitted the review yet. The GitHub API returns submitted reviews but not pending ones. If review threads appear empty or the user mentions they left comments that the agent cannot find, ask: "I don't see submitted review comments — do you have a pending review that needs to be submitted first?"
+
 ### Comment attribution
 
 Every PR review comment must be signed with the author's initials or identity. When reviewing:
