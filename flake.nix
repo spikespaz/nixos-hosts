@@ -57,6 +57,13 @@
 
               nix.settings.experimental-features =
                 [ "nix-command" "flakes" ];
+
+              image.modules.iso-impermanent = {
+                imports = [
+                  "${nixpkgs}/nixos/modules/installer/cd-dvd/iso-image.nix"
+                ];
+                isoImage.squashfsCompression = "zstd -Xcompression-level 19";
+              };
             })
           ];
         };
