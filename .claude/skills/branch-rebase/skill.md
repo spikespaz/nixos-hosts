@@ -55,6 +55,27 @@ When a branch mixes two independent topics:
 
 Both branches now cleanly extend master with only their own commits.
 
+## Splitting a commit
+
+When a commit bundles two independent changes (fails the "and" test), split it during interactive rebase:
+
+```bash
+git rebase -i origin/master   # mark the commit as 'edit'
+```
+
+When git stops at the commit:
+
+```bash
+git reset HEAD~1              # unstage the commit's changes
+git add <files-for-concern-A>
+git commit -m "..."
+git add <files-for-concern-B>
+git commit -m "..."
+git rebase --continue
+```
+
+This replaces the single commit with two properly scoped ones. Works for any number of splits.
+
 ## Diagnosing merge-base divergence
 
 When a PR shows conflicts with its target branch:
