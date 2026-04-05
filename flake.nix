@@ -13,11 +13,11 @@
       eachSystem = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
       pkgsFor =
         eachSystem (system: import nixpkgs { localSystem.system = system; });
-      pkgsCrossFor = eachSystem (buildSystem:
+      pkgsCrossFor = localSystem: crossSystem:
         import nixpkgs {
-          localSystem.system = buildSystem;
-          crossSystem.system = "x86_64-linux";
-        });
+          localSystem.system = localSystem;
+          crossSystem.system = crossSystem;
+        };
       # Caller modules are ordered before host defaults so callers can
       # use mkOrder and mkOverride to override without fighting evaluation order.
       mkBirdboot = { pkgs, modules ? [ ] }: nixpkgs.lib.nixosSystem {
@@ -74,7 +74,7 @@
           name = "birdboot-images"
             + lib.optionalString isCross "-${hostSystem}";
           images = if isCross then
-            let pkgs = pkgsCrossFor.${buildSystem};
+            let pkgs = pkgsCrossFor buildSystem hostSystem;
             in (mkBirdboot { inherit pkgs; }).config.system.build.images
           else
             self.nixosConfigurations.birdboot-portable.config.system.build.images;
