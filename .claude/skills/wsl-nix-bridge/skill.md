@@ -108,6 +108,27 @@ git add flake.lock
 
 This keeps commits on the Windows side with the correct identity and co-author trailers. Only commit from WSL when necessary (e.g., if the nix command produces many scattered file changes).
 
+## Pitfalls
+
+### Git Bash path mangling
+
+When invoking `wsl -d NixOS -- bash -c '...'` from Git Bash, absolute Linux paths starting with `/` are rewritten (e.g., `/nix/store/...` becomes `C:/Program Files/Git/nix/store/...`). Use a heredoc so the shell content is interpreted inside WSL:
+
+```
+wsl -d NixOS -- bash <<'WSL'
+RESULT=$(nix build .#foo --no-link --print-out-paths)
+"$RESULT/bin/foo"
+WSL
+```
+
+### Updating branches checked out in worktrees
+
+`git branch -f <branch> origin/<branch>` fails if that branch is checked out in a worktree. Update from inside the worktree instead:
+
+```
+wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git merge --ff-only origin/<branch>'
+```
+
 ## Notes
 
 - The `+` prefix in the push refspec force-updates the temp branch, which is safe since it exists only for synchronization.
