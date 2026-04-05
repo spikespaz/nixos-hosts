@@ -54,8 +54,10 @@ git push wsl <branch-name>
 ### 2. Update and run nix commands in the WSL worktree
 
 ```
-wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git checkout <branch-name> && <nix command>'
+wsl -d NixOS -- bash -c 'cd ~/nixos-hosts/.claude/worktrees/<name> && git pull && <nix command>'
 ```
+
+If the WSL worktree doesn't exist yet, create it first (see Setup).
 
 Common operations:
 
