@@ -47,6 +47,19 @@
             })
           ];
         };
+
+        birdboot-portable = nixpkgs.lib.nixosSystem {
+          modules = [
+            ({ ... }: {
+              nixpkgs.hostPlatform = "x86_64-linux";
+              system.stateVersion = "25.05";
+              networking.hostName = "birdboot-portable";
+
+              nix.settings.experimental-features =
+                [ "nix-command" "flakes" ];
+            })
+          ];
+        };
       };
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
