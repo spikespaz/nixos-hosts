@@ -159,4 +159,4 @@ Keep PR titles and bodies current as content changes. Titles must reflect the ac
 
 ## After all merges
 
-Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. Delete merged branches only after verifying content reached master (see `branch-rebase` skill).
+Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. For WSL sync, follow the `wsl-nix-bridge` skill — rebase WSL branches (never reset), update worktree-checked-out branches from inside the worktree, use heredocs to avoid path mangling. Delete merged branches only after verifying content reached master (see `branch-rebase` skill).
