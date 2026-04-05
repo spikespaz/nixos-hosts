@@ -13,6 +13,15 @@
       eachSystem = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
       pkgsFor =
         eachSystem (system: import nixpkgs { localSystem.system = system; });
+      crossPkgsFor = eachSystem (buildSystem:
+        import nixpkgs {
+          localSystem.system = buildSystem;
+          crossSystem.system = "x86_64-linux";
+        });
+      mkBirdboot = { pkgs }: nixpkgs.lib.nixosSystem {
+        inherit pkgs;
+        modules = [ ./hosts/birdboot ];
+      };
     in {
       nixosConfigurations = {
         pathfinder-wsl = nixpkgs.lib.nixosSystem {
@@ -48,28 +57,27 @@
           ];
         };
 
-        birdboot-portable = nixpkgs.lib.nixosSystem {
-          modules = [
-            ({ ... }: {
-              nixpkgs.hostPlatform = "x86_64-linux";
-              system.stateVersion = "25.05";
-              networking.hostName = "birdboot-portable";
-
-              nix.settings.experimental-features =
-                [ "nix-command" "flakes" ];
-
-              image.modules.iso-impermanent = {
-                imports = [
-                  "${nixpkgs}/nixos/modules/installer/cd-dvd/iso-image.nix"
-                ];
-                isoImage.squashfsCompression = "zstd -Xcompression-level 19";
-              };
-            })
-          ];
+        birdboot-portable = mkBirdboot {
+          pkgs = pkgsFor."x86_64-linux";
         };
       };
+
+      # TODO: hostSystem should be parameterized — aarch64-linux may
+      # also be a host system in the future. Consider lifting to a
+      # per-host config attrset that maps hostSystem → nixosConfiguration.
+      packages = lib.mapAttrs (buildSystem: pkgs:
+        let
+          hostSystem = "x86_64-linux";
+          isCross = buildSystem != hostSystem;
+          name = "birdboot-images"
+            + lib.optionalString isCross "-${hostSystem}";
+          images = if isCross then
+            let pkgs = crossPkgsFor.${buildSystem};
+            in (mkBirdboot { inherit pkgs; }).config.system.build.images
+          else
+            self.nixosConfigurations.birdboot-portable.config.system.build.images;
+        in { ${name} = images; }) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
     };
 }
-
