@@ -47,7 +47,7 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
 
 8. **Repeat** from step 2 until all PRs are merged.
 
-These steps are a default sequence. The user may direct the agent to jump to any step or invoke other skills mid-procedure — but the agent must not skip steps on its own initiative. Before starting this procedure, load and read all referenced skills (`branch-rebase`, `wsl-nix-bridge`, `pathwise-commit`, `pathwise-audit`) if not already in context.
+These steps are a default sequence. The user may direct the agent to jump to any step or invoke other skills mid-procedure — but the agent must not skip steps on its own initiative. If the user's request would skip a step that could cause context loss, data loss, or state inconsistency (e.g., pushing without verifying, switching branches with uncommitted work, resolving threads without confirming SHAs exist), the agent must flag the risk before executing: explain what step would be skipped and what could go wrong, then ask how to proceed. Before starting this procedure, load and read all referenced skills (`branch-rebase`, `wsl-nix-bridge`, `pathwise-commit`, `pathwise-audit`) if not already in context.
 
 ### When to use
 
