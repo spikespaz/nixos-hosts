@@ -1,0 +1,38 @@
+name: Build birdboot-portable images
+
+on:
+  pull_request:
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "hosts/birdboot/**"
+      - ".github/workflows/build-birdboot-portable.yml"
+  push:
+    branches: [master]
+    paths:
+      - "flake.nix"
+      - "flake.lock"
+      - "hosts/birdboot/**"
+      - ".github/workflows/build-birdboot-portable.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - image: iso-impermanent
+            system: x86_64-linux
+            runner: ubuntu-latest
+            attr: nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.image }} (${{ matrix.system }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: nixbuild/nix-quick-install-action@v32
+
+      - name: Build ${{ matrix.image }} for ${{ matrix.system }}
+        run: >
+          nix build .#${{ matrix.attr }}
+          --print-build-logs
