@@ -106,6 +106,18 @@ Every PR review comment must be signed with the author's initials or identity. W
 
 This prevents ambiguity when multiple agents or the user leave comments on the same PR.
 
+### Resolving threads after context breaks
+
+After a context break, read all unresolved review threads. For each thread that claims to be fixed, verify the fixing commit exists on both the local branch and `origin/`. A SHA that is only local (not pushed) or only on origin (lost to a force-push) means the thread is not actually resolved. Flag before resolving.
+
+### PR title and body maintenance
+
+Keep PR titles and bodies current as content changes. Titles must reflect the actual commits on the branch — not what the branch had when the PR was opened. Bodies must accurately describe included and deferred content.
+
+**Checkboxes:** Update test plan checkboxes incrementally as tests pass or fail. Prefer running checks after each relevant change rather than batching all checks at the end — incremental checks only need to be re-run when affected code changes. When checking or unchecking a box, notify the user of the change.
+
+**Periodic checks during finalization:** During the merge procedure, verify titles and bodies after each rebase or force-push. Rebasing can change commit counts, drop absorbed commits, or surface new conflicts — the PR description must stay consistent with the branch state.
+
 ### Batch mode review cycle
 
 1. Agent opens PR or pushes updates.
