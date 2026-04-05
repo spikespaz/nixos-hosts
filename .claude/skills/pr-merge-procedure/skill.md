@@ -22,7 +22,7 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
    git log --oneline origin/<branch> --not origin/master | wc -l   # branch-only commit count
    git diff origin/master..origin/<branch> --stat                  # branch-only file changes
    ```
-   Report the full picture before starting rebases. Rebase all affected branches, not just the one the user asked about.
+   Report the full picture before starting rebases. Rebase all affected branches, not just the one the user asked about. During each rebase, follow the `branch-rebase` skill procedure — verify with both log and diff stat, watch for unexpected conflicts or retained commits that indicate content loss.
 
 4. **Agent rebases each branch.**
    ```bash
@@ -47,7 +47,7 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
 
 8. **Repeat** from step 2 until all PRs are merged.
 
-These steps are a default sequence, not rigid. The user may jump to any step, skip steps, or invoke other skills (e.g., `pathwise-audit`, `wsl-nix-bridge`) mid-procedure. Follow the user's lead.
+These steps are a default sequence. The user may direct the agent to jump to any step or invoke other skills mid-procedure — but the agent must not skip steps on its own initiative. Before starting this procedure, load and read all referenced skills (`branch-rebase`, `wsl-nix-bridge`, `pathwise-commit`, `pathwise-audit`) if not already in context.
 
 ### When to use
 
