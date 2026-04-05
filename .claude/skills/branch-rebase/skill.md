@@ -115,6 +115,16 @@ The bad state remains in the reflog if you need it later.
 
 Manual cherry-pick reconstruction bypasses duplicate detection, forces you to manually select commits, and creates new objects for commits that are already upstream. The only case for manual cherry-picks is when you need to **edit** commit content during transfer (see `pr-minification-split`).
 
+## Deleting merged branches
+
+Before deleting a local branch after its PR merges, verify the content reached master. GitHub merge strategies (squash, rebase) create different commit hashes, so check by diffing files — not by matching SHAs:
+
+```bash
+git diff <local-branch> origin/master -- <files-changed-by-branch>
+```
+
+Empty diff confirms the content is on master. If the diff is non-empty, the branch has unpushed work — ask the user before deleting.
+
 ## Never re-create changes manually
 
 When a change needs to be moved, restored, or re-applied, always use `git cherry-pick` or `git rebase` — never re-type or re-apply the diff manually as a new commit. Cherry-pick and rebase surface merge conflicts explicitly; manual re-creation silently overwrites them, hiding divergence that should be resolved.
