@@ -18,9 +18,11 @@
           localSystem.system = buildSystem;
           crossSystem.system = "x86_64-linux";
         });
-      mkBirdboot = { pkgs }: nixpkgs.lib.nixosSystem {
+      # Caller modules are ordered before host defaults so callers can
+      # use mkOrder and mkOverride to override without fighting evaluation order.
+      mkBirdboot = { pkgs, modules ? [ ] }: nixpkgs.lib.nixosSystem {
         inherit pkgs;
-        modules = [ ./hosts/birdboot ];
+        modules = modules ++ [ ./hosts/birdboot ];
       };
     in {
       nixosConfigurations = {
