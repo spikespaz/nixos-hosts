@@ -12,17 +12,21 @@
       options = [ "mode=0755" ];
     };
     fileSystems."/nix/store" = {
-      device = "/dev/disk/by-label/nixos-system";
+      device = "/dev/disk/by-partlabel/bb-system";
       fsType = "squashfs";
     };
     fileSystems."/boot" = {
-      device = "/dev/disk/by-partlabel/10-esp";
+      device = "/dev/disk/by-partlabel/bb-esp";
       fsType = "vfat";
     };
 
+    # TODO: parameterize all bb-* labels and repart name with a
+    # per-device UID to avoid conflicts when multiple birdboot
+    # drives are connected. Affects: image.repart.name, partition
+    # labels (bb-esp, bb-system, bb-persist), and fileSystems entries.
     image.repart.name = config.networking.hostName;
     image.repart.partitions = {
-      "10-esp" = {
+      "bb-esp" = {
         contents = {
           "/EFI/BOOT/BOOTX64.EFI".source =
             "${pkgs.systemd}/lib/systemd/boot/efi/systemd-bootx64.efi";
@@ -34,20 +38,20 @@
           SizeMaxBytes = "512M";
         };
       };
-      "20-system" = {
+      "bb-system" = {
         storePaths = [ config.system.build.toplevel ];
         repartConfig = {
           Type = "linux-generic";
           Format = "squashfs";
           Minimize = "guess";
-          Label = "nixos-system";
+          Label = "bb-system";
         };
       };
-      "30-persist" = {
+      "bb-persist" = {
         repartConfig = {
           Type = "linux-generic";
           SizeMinBytes = "1G";
-          Label = "persist";
+          Label = "bb-persist";
         };
       };
     };
