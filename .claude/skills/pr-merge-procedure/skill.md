@@ -91,6 +91,7 @@ The agent rebases all PR branches in a predetermined order, then force-pushes ea
 
 The user may switch to rapid-fire chat mode to drive git history edits directly — rebases, rewords, reorders, drops. During this mode:
 
+- **Policy check first.** Before executing any git operation — whether prompted by the user or planned by the agent — check the request against the policy documentation (`branch-rebase`, `wsl-nix-bridge`, `pathwise-commit`, this skill). If the request would violate a policy (e.g., manual re-creation instead of cherry-pick, reset instead of rebase, force-push without prior rebase), flag it before executing. This applies equally to user requests and agent plans.
 - Stay responsive and brief. Confirm what was asked, flag problems immediately, no unsolicited elaboration.
 - Execute exactly what the user asks. Do not batch or reinterpret multiple instructions into one operation.
 - After each operation, report the result concisely (new commit list, conflict if any).
