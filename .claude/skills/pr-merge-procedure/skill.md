@@ -36,7 +36,9 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
    ```
    Only force-push after verifying the rebase is clean. If anything looks wrong, report to the user and wait.
 
-6. **Repeat** from step 2 until all PRs are merged.
+6. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes.
+
+7. **Repeat** from step 2 until all PRs are merged.
 
 ### When to use
 
@@ -73,7 +75,9 @@ The agent rebases all PR branches in a predetermined order, then force-pushes ea
    ```
    Push in merge order. Each push is verified before the next.
 
-4. **Report.** List each branch with its commit count and diff stat. The user merges them in the agreed order.
+4. **Check PR titles and bodies.** After each push, verify the PR title, body, and checkboxes match the rebased branch state. Update automatically and notify the user of changes.
+
+5. **Report.** List each branch with its commit count and diff stat. The user merges them in the agreed order.
 
 ### When to use
 
