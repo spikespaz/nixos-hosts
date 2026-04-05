@@ -124,8 +124,8 @@ GitHub reviews can be in a `PENDING` state — the user wrote comments but hasn'
 
 Every PR review comment must be signed with the author's initials or identity. When reviewing:
 
-- The agent signs its comments on a new line using `<sub>` for small text and inline code for the checkout: `\n<sub>- Claude on \`<branch-or-worktree>\`</sub>`.
-- The user signs their comments on a new line with their initials. If the user forgets, the agent edits the comment to append the user's initials on a new line.
+- The agent signs its comments on a new line using `<sub>`, en-dash, and inline code for the checkout: `\n<sub>– Claude on \`<branch-or-worktree>\`</sub>`.
+- The user signs their comments on a new line with tilde and their initials: `\n~ <initials>`. If the user forgets, the agent edits the comment to append the signature on a new line.
 
 This prevents ambiguity when multiple agents or the user leave comments on the same PR.
 
