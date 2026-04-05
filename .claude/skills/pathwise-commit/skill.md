@@ -347,7 +347,26 @@ The agent should rebase temporary commits at its discretion — typically when:
 - The conversation reaches a natural checkpoint
 - Before pushing or creating a PR
 
-Temporary commits should never be pushed to a remote. They are local bookkeeping.
+Temporary commits must be cleaned up before merge or review. Pushing them to a remote for CI validation is fine — they are work-in-progress, not secrets.
+
+### Pre-rebase spot-check
+
+Before executing a rebase, perform a comprehensive state audit and present an actionable plan. This catches stale branches, sync drift, superseded commits, and orphan state before they compound.
+
+**Gather:**
+1. Local branch layout with tracking info
+2. Remote branch refs (all remotes)
+3. Sync divergence: local vs each remote for relevant branches
+4. Open/closed PRs
+5. Worktree and working directory state (all environments)
+6. Full divergence history from base branch
+
+**Plan:**
+- Annotate each commit with its rebase fate: `pick`, `drop`, `squash`, `reword`
+- Identify add/remove pairs, superseded commits, and squash targets
+- State the expected final commit count
+- List post-rebase verification steps (eval, sync, PR updates)
+- Present the plan for user approval before executing
 
 ## When In Doubt
 
