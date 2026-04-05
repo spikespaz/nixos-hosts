@@ -141,6 +141,10 @@ git rebase origin/<branch>
 git reset --hard origin/<branch>
 ```
 
+## Force-pushing bridge refs
+
+Before force-pushing to a WSL bridge branch, rebase locally first to check whether commits auto-resolve against the target state. If divergence remains after rebase, inspect the diff to confirm no local work will be lost. Never force-push without this check.
+
 ## Notes
 
 - The `+` prefix in the push refspec force-updates the temp branch, which is safe since it exists only for synchronization.
