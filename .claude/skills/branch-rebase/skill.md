@@ -126,6 +126,10 @@ The bad state remains in the reflog if you need it later.
 
 Manual cherry-pick reconstruction bypasses duplicate detection, forces you to manually select commits, and creates new objects for commits that are already upstream. The only case for manual cherry-picks is when you need to **edit** commit content during transfer (see `pr-minification-split`).
 
+## Push before referencing commit SHAs
+
+When commenting on GitHub PRs with commit hashes (e.g., "Fixed in abc1234"), push the branch to origin first. GitHub only autolinks SHAs that exist on the remote — unpushed local hashes render as plain text.
+
 ## Deleting merged branches
 
 Before deleting a local branch after its PR merges, verify the content reached master. GitHub merge strategies (squash, rebase) create different commit hashes, so check by diffing files — not by matching SHAs:
