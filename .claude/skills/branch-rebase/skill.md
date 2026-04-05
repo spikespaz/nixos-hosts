@@ -114,3 +114,7 @@ The bad state remains in the reflog if you need it later.
 - Produces clean linear history
 
 Manual cherry-pick reconstruction bypasses duplicate detection, forces you to manually select commits, and creates new objects for commits that are already upstream. The only case for manual cherry-picks is when you need to **edit** commit content during transfer (see `pr-minification-split`).
+
+## Never re-create changes manually
+
+When a change needs to be moved, restored, or re-applied, always use `git cherry-pick` or `git rebase` — never re-type or re-apply the diff manually as a new commit. Cherry-pick and rebase surface merge conflicts explicitly; manual re-creation silently overwrites them, hiding divergence that should be resolved.
