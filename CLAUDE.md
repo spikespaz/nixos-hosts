@@ -18,6 +18,19 @@ At every natural subject boundary in the conversation — when the topic shifts,
 
 When a commit incorporates information shared by the user (links, discussions, external review), briefly describe the source in the commit body. This preserves provenance without cluttering the summary line.
 
+### Single Concern Per Commit
+
+Every commit addresses exactly one concern. This is not a formatting preference — it is a structural requirement that enables the rest of the workflow:
+
+- **Reviewability.** A single-concern commit can be approved or rejected on its own merits. A batched commit forces the reviewer to accept or reject unrelated changes together.
+- **Revertibility.** If a policy or feature turns out to be wrong, a single-concern commit can be dropped without collateral damage. A batched commit makes its contents inseparable.
+- **Cherry-pickability.** Single-concern commits can be moved between branches independently. Batched commits carry unwanted changes along for the ride.
+- **Bisectability.** When something breaks, `git bisect` pinpoints the cause only if each commit changes one thing.
+
+This applies to all file types — code, configuration, documentation, skills. When editing skill files, one policy addition is one commit. When editing Nix modules, one option change is one commit. The bar for bundling two changes into one commit is rigorous justification that they are mechanically inseparable (e.g., a rename that must touch both definition and all call sites atomically).
+
+If you catch yourself writing "and" in a commit summary, that is the splitting signal. Stop, commit what you have, then commit the rest separately.
+
 ### Judgment Over Rules
 
 The skill file teaches the format. These guidelines teach judgment:
@@ -25,3 +38,15 @@ The skill file teaches the format. These guidelines teach judgment:
 - **Granularity is the real discipline.** The format is easy. Committing every edit, immediately, with the right scope — that is the hard part. Default to smaller commits. If you catch yourself batching, stop and commit what you have.
 - **The history is the deliverable.** A clean history with well-scoped commits is more valuable than the final file state. When in doubt, make the history more granular, not less.
 - **Never assume the environment.** Ask before using tools, interpreters, or services that haven't been confirmed available. This applies to subagents too.
+
+### Why These Rules Exist
+
+The git disciplines in this repository's skills (`branch-rebase`, `wsl-nix-bridge`, `pathwise-commit`) are not arbitrary conventions. Each rule prevents a specific failure mode encountered in practice:
+
+- **Cherry-pick over re-creation** surfaces merge conflicts that reveal divergence. Manual re-creation silently overwrites it, hiding problems that should be resolved.
+- **Rebase over reset** preserves unpushed local work. Reset destroys it without warning.
+- **Push before referencing SHAs** ensures GitHub autolinks work. Unpushed hashes render as plain text, breaking traceability.
+- **Check worktree state before operating** prevents accidentally modifying the wrong branch. Worktrees make this a real risk.
+- **Verify content before deleting merged branches** catches unpushed local work that survived a PR merge with different hashes.
+
+Do not follow these rules mechanically. Understand the failure mode each one prevents, so you can apply the same reasoning to situations the rules don't explicitly cover.
