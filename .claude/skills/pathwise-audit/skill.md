@@ -22,7 +22,7 @@ Read each commit's full message (`git log --format=full <base>..HEAD`) to check 
 
 ### 2. Audit each commit
 
-For every commit in the range, evaluate:
+For every commit, read the full diff (`git show <hash>`) alongside the summary. The diff is the ground truth — the summary is a claim about it.
 
 #### Format compliance
 - Does the summary follow `<segment>: <segment>: <verb> <description>`?
@@ -34,6 +34,18 @@ For every commit in the range, evaluate:
 - Are rebase prefixes (`f`, `s`, `r`, `d`) used correctly if present?
 - 2-4 path segments? If 5+, is it justified?
 - Description 3-4 words median, ≤7?
+
+#### Diff/summary alignment
+
+Read each hunk and verify:
+
+- **Path segments match locus of change.** The files and functions touched by the diff should correspond to the path segments in the summary. Flag when the summary names a scope the diff doesn't touch, or when the diff's primary change is in a scope the summary doesn't name.
+- **Verb matches semantic effect.** The verb should describe the behavioral change visible in the diff — not the mechanical action. `add` means new functionality appeared; `remove` means it disappeared; `rename` means identifiers changed; `enforce` means a constraint was added. If the diff shows a rename but the summary says `refactor`, that's a discrepancy.
+- **No hidden secondary concerns.** Scan all hunks — not just the primary one. If the diff touches files or scopes beyond what the summary claims, the commit may bundle independent changes.
+- **Summary doesn't overstate or understate.** A diff that changes one default value should not be summarized as `overhaul configuration`. A diff that restructures control flow should not be summarized as `tweak condition`.
+- **Mechanistic language.** If the summary describes code structure (`refactor loop`, `extract helper`, `move function`) but the diff reveals a behavioral change, the summary is mechanistic. The summary should name the behavioral effect.
+
+When the diff is large (100+ lines), note whether the size is justified (new file, generated code, bulk rename) or indicates a granularity problem.
 
 #### Scope and file alignment
 - Do the files touched match the path segments claimed?
@@ -71,6 +83,15 @@ Structure your output as:
 |--------|---------|---------|-------|
 | <short-hash> | <summary> | ✅ / ⚠️ / ❌ | <issue if any> |
 
+### Diff/summary discrepancies
+
+| Commit | Summary says | Diff does | Issue |
+|--------|-------------|-----------|-------|
+| <short-hash> | <what summary claims> | <what diff shows> | <violation type> |
+
+Only include rows for commits with discrepancies. If all commits align, replace
+the table with "None — all summaries match their diffs."
+
 ### Format issues
 - <list specific violations with commit hash>
 
@@ -90,9 +111,16 @@ Structure your output as:
 - **⚠️ Minor**: Technically non-compliant but understandable — e.g., slightly long description, borderline verb choice. Mention but don't block.
 - **❌ Violation**: Breaks a MUST-level rule — vague verb, wrong scope, bundled independent changes, missing rename identifiers, abbreviation drift. Must fix before push.
 
+## Context management
+
+Reading full diffs is expensive. For branches with more than ~10 commits or commits with large diffs (100+ lines), delegate diff reading to subagents — one per commit or batch of small commits. The main agent handles the summary-level checks and assembles the final report.
+
+For small PR branches (≤5 commits, ≤50 lines each), reading diffs inline is fine.
+
 ## Notes
 
 - This audit is advisory. The user decides which recommendations to act on.
 - When the branch includes work-in-progress (rebase-prefix commits), audit the *intended* final state, not the raw temporary history.
 - If the branch mixes multiple hosts or concerns that should be separate PRs per project policy, flag that as a structural issue.
 - Reference specific rules from the pathwise-commit skill by section name when citing violations.
+- Do NOT list clean commits individually in findings sections — count them. Only enumerate commits with issues.
