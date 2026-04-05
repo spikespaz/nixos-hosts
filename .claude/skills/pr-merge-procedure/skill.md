@@ -47,6 +47,8 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
 
 8. **Repeat** from step 2 until all PRs are merged.
 
+These steps are a default sequence, not rigid. The user may jump to any step, skip steps, or invoke other skills (e.g., `pathwise-audit`, `wsl-nix-bridge`) mid-procedure. Follow the user's lead.
+
 ### When to use
 
 - The user wants to review each PR before merging
