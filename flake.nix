@@ -19,6 +19,7 @@
             ({ pkgs, config, ... }: {
               system.stateVersion = "25.05";
               networking.hostName = "pathfinder-wsl";
+              boot.binfmt.emulatedSystems = [ "x86_64-linux" ];
               wsl.enable = true;
               wsl.defaultUser = "jacob";
               wsl.interop.register = true;
