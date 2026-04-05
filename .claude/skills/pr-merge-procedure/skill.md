@@ -87,6 +87,35 @@ The agent rebases all PR branches in a predetermined order, then force-pushes ea
 - **No merging.** The agent prepares branches but does not merge. The user or CI merges.
 - **Abort on conflict.** If any rebase produces conflicts that don't auto-resolve, stop and report. Do not resolve conflicts silently in automatic mode — that requires user judgment.
 
+## PR review process
+
+PRs are reviewed bidirectionally — the user reviews agent work, and the agent reviews its own work (via pathwise-audit or spot-check). Review comments on GitHub must be attributable.
+
+### Comment attribution
+
+Every PR review comment must be signed with the author's initials or identity. When reviewing:
+
+- The agent signs its comments: `- Claude on <current_local_checkout>` (the branch or worktree name, so it's clear which agent session produced the comment).
+- The user signs their comments with their initials. If the user forgets, the agent edits the comment to append the user's initials.
+
+This prevents ambiguity when multiple agents or the user leave comments on the same PR.
+
+### Batch mode review cycle
+
+1. Agent opens PR or pushes updates.
+2. User reviews on GitHub — leaves comments, requests changes.
+3. Agent reads review comments (`gh api`), addresses each one with a commit, replies with the fixing commit SHA, and resolves the thread.
+4. User re-reviews. Cycle repeats until approved.
+5. User merges. Agent rebases remaining branches (see batch mode above).
+
+### Automatic mode review cycle
+
+1. Agent runs pathwise-audit on each branch before presenting the merge order.
+2. Agent fixes any issues found, pushes, and reports the audit results.
+3. User reviews the audit report and the PR diffs. Approves or requests changes.
+4. Once all approved, agent rebases in order and force-pushes (see automatic mode above).
+5. User merges in the agreed sequence.
+
 ## After all merges
 
 Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. Delete merged branches only after verifying content reached master (see `branch-rebase` skill).
