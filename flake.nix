@@ -61,6 +61,8 @@
         };
 
         birdboot-portable = mkBirdboot { pkgs = pkgsFor."x86_64-linux"; };
+
+        birdboot-portable-aarch64 = mkBirdboot { pkgs = pkgsFor."aarch64-linux"; };
       };
 
       # TODO: hostSystem should be parameterized — aarch64-linux may
