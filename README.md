@@ -21,3 +21,11 @@ All variants are built from the `birdboot-portable` NixOS configuration:
 ```
 nix build .#nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
 ```
+
+### CI
+
+Image builds are verified by GitHub Actions on every PR and push to master. Native x86_64 builds use Hydra binary cache substitution.
+
+Planned improvements:
+- aarch64 builds via binfmt emulation on x86_64 runners (Hydra-cached, no ARM runner cost)
+- Nix store caching between workflow runs to reduce redundant fetches
