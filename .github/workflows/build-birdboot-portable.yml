@@ -17,9 +17,16 @@ on:
       - "hosts/birdboot/**"
       - ".github/workflows/build-birdboot-portable.yml"
   workflow_dispatch:
+    inputs:
+      cache-max-mb:
+        description: "Max binary cache size in MB (0 = no cache limit)"
+        required: false
+        default: "1024"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  LOCAL_CACHE: /tmp/nix-binary-cache
+  CACHE_MAX_MB: ${{ inputs.cache-max-mb || '1024' }}
 
 jobs:
   build-x86_64:
@@ -27,12 +34,70 @@ jobs:
     name: iso-impermanent (x86_64-linux)
     steps:
       - uses: actions/checkout@v4
+
       - uses: nixbuild/nix-quick-install-action@v32
+        with:
+          nix_conf: |
+            pure-eval = true
+            allow-import-from-derivation = false
+
+      - name: Compute derivation hash
+        id: drv-hash
+        run: |
+          drv_path=$(nix eval --raw .#nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent.drvPath 2>/dev/null || echo "unknown")
+          drv_hash=$(basename "$drv_path" | cut -d'-' -f1)
+          echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
+          echo "Cache key: drv-$drv_hash"
+
+      - name: Restore local binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.LOCAL_CACHE }}
+          key: nix-x86_64-linux-iso-impermanent-drv-${{ steps.drv-hash.outputs.hash }}
+          restore-keys: |
+            nix-x86_64-linux-iso-impermanent-drv-
+
+      - name: Import from local cache
+        run: |
+          if [ -f "$LOCAL_CACHE/nix-cache-info" ]; then
+            echo "Importing from local binary cache..."
+            nix copy --from "file://$LOCAL_CACHE" --all --no-check-sigs 2>/dev/null || true
+          else
+            echo "No local cache found, building from scratch."
+          fi
+
       - name: Build iso-impermanent
         run: >
           nix build
           .#nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
           --print-build-logs
+
+      - name: Export to local cache
+        if: always()
+        run: |
+          if [ ! -L ./result ]; then exit 0; fi
+          mkdir -p "$LOCAL_CACHE"
+          nix copy --to "file://$LOCAL_CACHE" ./result 2>/dev/null || true
+
+          if [ "$CACHE_MAX_MB" -gt 0 ] 2>/dev/null; then
+            cache_mb=$(du -sm "$LOCAL_CACHE" | cut -f1)
+            echo "Cache size: ${cache_mb}MB (budget: ${CACHE_MAX_MB}MB)"
+            if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
+              echo "Cache exceeds budget, pruning oldest NARs..."
+              while [ "$(du -sm "$LOCAL_CACHE" | cut -f1)" -gt "$CACHE_MAX_MB" ]; do
+                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' 2>/dev/null | sort | head -1 | cut -d' ' -f2)
+                if [ -z "$oldest" ]; then break; fi
+                rm -f "$oldest"
+              done
+              for ni in "$LOCAL_CACHE"/*.narinfo; do
+                nar_url=$(grep "^URL:" "$ni" 2>/dev/null | sed 's|^URL: ||')
+                if [ -n "$nar_url" ] && [ ! -f "$LOCAL_CACHE/$nar_url" ]; then
+                  rm -f "$ni"
+                fi
+              done
+              echo "Cache after pruning: $(du -sm "$LOCAL_CACHE" | cut -f1)MB"
+            fi
+          fi
 
   build-aarch64:
     if: >-
@@ -43,7 +108,13 @@ jobs:
     name: iso-impermanent (aarch64-linux)
     steps:
       - uses: actions/checkout@v4
+
       - uses: nixbuild/nix-quick-install-action@v32
+        with:
+          nix_conf: |
+            pure-eval = true
+            allow-import-from-derivation = false
+
       - name: Build iso-impermanent
         run: >
           nix build
