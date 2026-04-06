@@ -45,16 +45,24 @@ git add <file>
 Before continuing the rebase or cherry-pick, spawn a haiku-class agent to verify the resolution:
 
 ```
-Verify this conflict resolution is correct:
+Verify this formatter conflict resolution did not mangle semantic content:
 - File: <file>
 - Operation: <rebase step N of M / cherry-pick of <hash>>
 - The file was checked out from <ours/theirs> and reformatted.
-- Check that no semantic changes were lost — compare the resolved
-  file against both the HEAD version and the incoming commit's
-  version. Flag any non-formatting differences.
+
+Run these checks:
+1. Diff the resolved file against HEAD (pre-conflict). Identify every
+   non-whitespace difference. Each one must correspond to a semantic
+   change from the incoming commit — if any HEAD semantic content is
+   missing from the resolved file, the resolution LOST content.
+2. Diff the resolved file against the incoming commit's version.
+   Every semantic change from that commit must be present — if any
+   is missing, the resolution DROPPED the commit's intent.
+3. If EITHER check fails, report the lost content and ABORT. Do not
+   continue the rebase.
 ```
 
-The verification agent should confirm that the only differences between the resolved file and the two conflicting versions are formatting — no semantic content was dropped or duplicated.
+The verification agent must **abort the rebase** if semantic content was lost. Formatting-only differences are expected and safe. Any behavioral difference — added lines, removed lines, changed identifiers, altered logic — is a failure that requires manual resolution.
 
 ### 4. Continue
 
