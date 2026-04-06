@@ -20,10 +20,11 @@
         };
       # Caller modules are ordered before host defaults so callers can
       # use mkOrder and mkOverride to override without fighting evaluation order.
-      mkBirdboot = { pkgs, modules ? [ ] }: nixpkgs.lib.nixosSystem {
-        inherit pkgs;
-        modules = modules ++ [ ./hosts/birdboot ];
-      };
+      mkBirdboot = { pkgs, modules ? [ ] }:
+        nixpkgs.lib.nixosSystem {
+          inherit pkgs;
+          modules = modules ++ [ ./hosts/birdboot ];
+        };
     in {
       nixosConfigurations = {
         pathfinder-wsl = nixpkgs.lib.nixosSystem {
@@ -59,9 +60,7 @@
           ];
         };
 
-        birdboot-portable = mkBirdboot {
-          pkgs = pkgsFor."x86_64-linux";
-        };
+        birdboot-portable = mkBirdboot { pkgs = pkgsFor."x86_64-linux"; };
       };
 
       # TODO: hostSystem should be parameterized — aarch64-linux may
