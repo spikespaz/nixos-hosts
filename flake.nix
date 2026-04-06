@@ -65,21 +65,24 @@
         birdboot-portable-aarch64 = mkBirdboot { pkgs = pkgsFor."aarch64-linux"; };
       };
 
-      # TODO: hostSystem should be parameterized — aarch64-linux may
-      # also be a host system in the future. Consider lifting to a
-      # per-host config attrset that maps hostSystem → nixosConfiguration.
-      packages = lib.mapAttrs (buildSystem: pkgs:
+      packages = lib.mapAttrs (buildSystem: _:
         let
-          hostSystem = "x86_64-linux";
-          isCross = buildSystem != hostSystem;
-          name = "birdboot-images"
-            + lib.optionalString isCross "-${hostSystem}";
-          images = if isCross then
-            let pkgs = pkgsCrossFor buildSystem hostSystem;
-            in (mkBirdboot { inherit pkgs; }).config.system.build.images
-          else
-            self.nixosConfigurations.birdboot-portable.config.system.build.images;
-        in { ${name} = images; }) pkgsFor;
+          birdbootFor = {
+            "x86_64-linux" = self.nixosConfigurations.birdboot-portable;
+            "aarch64-linux" =
+              self.nixosConfigurations.birdboot-portable-aarch64;
+          };
+          native = lib.optionalAttrs (birdbootFor ? ${buildSystem}) {
+            birdboot-images =
+              birdbootFor.${buildSystem}.config.system.build.images;
+          };
+          cross = lib.concatMapAttrs (hostSystem: config:
+            lib.optionalAttrs (hostSystem != buildSystem) {
+              "birdboot-images-${hostSystem}" = (mkBirdboot {
+                pkgs = pkgsCrossFor buildSystem hostSystem;
+              }).config.system.build.images;
+            }) birdbootFor;
+        in native // cross) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
     };
