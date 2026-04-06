@@ -9,6 +9,7 @@ on:
       - ".github/workflows/build-birdboot-portable.yml"
   push:
     branches: [master]
+    tags: ["v*"]
     paths:
       - "flake.nix"
       - "flake.lock"
@@ -16,25 +17,33 @@ on:
       - ".github/workflows/build-birdboot-portable.yml"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  build:
-    strategy:
-      matrix:
-        include:
-          - image: iso-impermanent
-            system: x86_64-linux
-            runner: ubuntu-latest
-            attr: nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
-    runs-on: ${{ matrix.runner }}
-    name: ${{ matrix.image }} (${{ matrix.system }})
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  build-x86_64:
+    runs-on: ubuntu-latest
+    name: iso-impermanent (x86_64-linux)
     steps:
       - uses: actions/checkout@v4
-
       - uses: nixbuild/nix-quick-install-action@v32
-
-      - name: Build ${{ matrix.image }} for ${{ matrix.system }}
+      - name: Build iso-impermanent
         run: >
-          nix build .#${{ matrix.attr }}
+          nix build
+          .#nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
+          --print-build-logs
+
+  build-aarch64:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-24.04-arm
+    name: iso-impermanent (aarch64-linux)
+    steps:
+      - uses: actions/checkout@v4
+      - uses: nixbuild/nix-quick-install-action@v32
+      - name: Build iso-impermanent
+        run: >
+          nix build
+          .#nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.iso-impermanent
           --print-build-logs
