@@ -43,7 +43,7 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
    ```
    Only force-push after verifying the rebase is clean. If anything looks wrong, report to the user and wait.
 
-7. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes.
+7. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes. Merge order notes are preserved for posterity — when a dependency merges, mark it as merged in the note rather than removing it.
 
 8. **Repeat** from step 2 until all PRs are merged.
 
