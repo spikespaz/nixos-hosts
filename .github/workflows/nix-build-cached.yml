@@ -1,3 +1,7 @@
+# Reusable nix build with binary cache, artifact deduplication, and budget eviction.
+# Callers must add their own draft-PR guard — this workflow cannot access
+# github.event.pull_request.draft from a workflow_call context.
+# Example: if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
 name: Nix Build (cached, deduplicated)
 
 on:
