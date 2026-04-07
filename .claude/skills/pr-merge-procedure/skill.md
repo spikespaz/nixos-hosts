@@ -191,4 +191,30 @@ Keep PR titles and bodies current as content changes. Titles must reflect the ac
 
 ## After all merges
 
-Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. For WSL sync, follow the `wsl-nix-bridge` skill — rebase WSL branches (never reset), update worktree-checked-out branches from inside the worktree, use heredocs to avoid path mangling. Delete merged branches only after verifying content reached master (see `branch-rebase` skill).
+Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. For WSL sync, follow the `wsl-nix-bridge` skill — rebase WSL branches (never reset), update worktree-checked-out branches from inside the worktree, use heredocs to avoid path mangling.
+
+Delete merged branches (local and remote) only after verifying content reached master (see `branch-rebase` skill):
+
+```bash
+git branch -D <merged-branch>
+git push origin --delete <merged-branch>
+```
+
+If a cascade rebase empties a branch (all commits absorbed), ask the user whether to close its PR. Do not close or delete automatically — the branch may be needed later.
+
+Before declaring any PR ready for merge, check top-level PR comments (not just review threads) for unresolved feedback:
+
+```bash
+gh api repos/{owner}/{repo}/issues/{number}/comments
+```
+
+### CI validation branch (optional)
+
+When the user wants to validate the combined state of multiple PRs against CI, offer to create a disposable CI branch at the tip of the stack:
+
+```bash
+git checkout -B u/<user>/<name> <last-pr-branch>
+git push origin u/<user>/<name>
+```
+
+This branch is never merged — individual PRs are merged in order. Delete it when the stack is fully merged. Use `git checkout -B` to rebuild after cascade rebases (this is not a working branch, so the "rebase over reset" principle does not apply).
