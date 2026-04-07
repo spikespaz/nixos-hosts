@@ -96,7 +96,7 @@ jobs:
             echo "No local cache found, building from scratch."
           fi
 
-      - name: Build
+      - name: "Build ${{ inputs.artifact-name }}"
         if: steps.check-existing.outputs.skipped != 'true'
         run: >
           nix build '.#${{ inputs.attr }}'
