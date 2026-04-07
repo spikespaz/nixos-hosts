@@ -53,6 +53,12 @@ The git disciplines in this repository's skills (`branch-rebase`, `wsl-nix-bridg
 
 Do not follow these rules mechanically. Understand the failure mode each one prevents, so you can apply the same reasoning to situations the rules don't explicitly cover.
 
+## CI and Branch Management
+
+- **Push and iterate autonomously on feature branches.** Do not ask for confirmation before pushing, force-pushing (with lease), or re-running CI on non-main branches. The user expects you to drive the feedback loop.
+- **Clean up after merge.** Delete merged branches (local and remote) and rebase remaining branches onto updated master. Follow the `branch-rebase` skill's deletion verification procedure.
+- **All PR bases target master.** Even when PRs form a dependency chain, each PR's base branch on GitHub is `master`. Merge order is enforced by convention (documented in PR bodies), not by base targeting. Setting prerequisite branches as bases causes commits to land on feature branches when merged out of order.
+
 ## Documentation
 
 - **Link rendered versions after pushing.** When documentation or markdown changes are pushed, provide the GitHub rendered URL for each affected file so the user can verify formatting: `https://github.com/<owner>/<repo>/blob/<branch>/<file>`.
