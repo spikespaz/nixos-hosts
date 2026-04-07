@@ -72,12 +72,23 @@ jobs:
           .#nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
           --print-build-logs
 
-      - name: Export to local cache
+      - name: Upload ISO artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iso-impermanent-x86_64-linux
+          path: result/iso/*.iso
+          retention-days: 7
+
+      - name: Export closure to local cache
         if: always()
         run: |
           if [ ! -L ./result ]; then exit 0; fi
           mkdir -p "$LOCAL_CACHE"
-          nix copy --to "file://$LOCAL_CACHE" ./result 2>/dev/null || true
+          # Cache the closure dependencies, not the final ISO
+          for path in $(nix path-info --recursive ./result 2>/dev/null | grep -v "$(readlink -f ./result)"); do
+            nix copy --to "file://$LOCAL_CACHE" "$path" 2>/dev/null || true
+          done
 
           if [ "$CACHE_MAX_MB" -gt 0 ] 2>/dev/null; then
             cache_mb=$(du -sm "$LOCAL_CACHE" | cut -f1)
@@ -120,3 +131,11 @@ jobs:
           nix build
           .#nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.iso-impermanent
           --print-build-logs
+
+      - name: Upload ISO artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iso-impermanent-aarch64-linux
+          path: result/iso/*.iso
+          retention-days: 7
