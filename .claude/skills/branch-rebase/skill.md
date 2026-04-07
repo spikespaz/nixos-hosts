@@ -190,6 +190,17 @@ When a rebase step conflicts:
 
 The most common mistake is treating a rebase conflict like a merge and manually combining both sides. This produces duplicate code, stale references, or mixed formatting. When in doubt, skip or abort — never guess.
 
+### After any `--ours` or `--theirs` resolution
+
+Taking one side wholesale discards the other side's changes. After resolving with `--ours` or `--theirs`, diff the resolved file against the discarded side to confirm nothing semantic was lost:
+
+```bash
+# After git checkout --ours <file>:
+git diff REBASE_HEAD -- <file>   # shows what the replayed commit contributed
+```
+
+Every hunk in that diff is content you chose to discard. Verify each one is either a duplicate of what's already on the base, or something intentionally dropped. If any hunk contains a semantic change you didn't mean to lose, the resolution is wrong — amend before continuing.
+
 ## Never re-create changes manually
 
 When a change needs to be moved, restored, or re-applied, always use `git cherry-pick` or `git rebase` — never re-type or re-apply the diff manually as a new commit. Cherry-pick and rebase surface merge conflicts explicitly; manual re-creation silently overwrites them, hiding divergence that should be resolved.
