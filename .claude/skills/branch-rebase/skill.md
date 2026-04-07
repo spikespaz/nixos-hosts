@@ -115,6 +115,16 @@ git checkout -B <branch> <good-ref>
 
 The bad state remains in the reflog if you need it later.
 
+## Commit age and rebase scope
+
+When rebasing, consider the age of commits being rewritten:
+
+- **Commits older than 2 days:** Do not rebase. These represent solidified work with established timestamps that mark natural pauses, task switches, or review cycles. Rewriting them destroys timeline provenance.
+- **Commits 1–2 days old:** Borderline. Ask the user before rebasing unless the rebase is onto a freshly merged upstream and the commits are clearly from the same work session.
+- **Commits from the current session:** Safe to rebase freely.
+
+The purpose of this rule is to preserve the natural timeline of work. Squashing a week of incremental commits into one destroys evidence of the development process — when pauses happened, when direction changed, when reviews occurred. Temporary commits (`f`, `s`, `r`, `d` prefixed) are an exception: they are explicitly marked for rebase regardless of age.
+
 ## Cascade rebase for stacked branches
 
 When multiple branches form a linear chain (each forked from the previous), rebasing one branch requires rebasing every downstream branch. A rebase cascade is atomic — do not push until all branches in the chain are rebased and verified.
