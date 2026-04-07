@@ -129,15 +129,17 @@ git log --oneline HEAD --not <parent-branch>
 
 If any branch becomes empty after rebase (all commits absorbed by upstream), its PR can be closed.
 
-## Force-push rejection after external merge
+## Force-push rejection after external change
 
-When GitHub merges a PR (or the user merges on the web), the remote branch SHA changes in a way the local tracking ref doesn't know about. `--force-with-lease` rejects the push for that branch. Use `--force` for the affected branch only — not as a blanket flag:
+If `--force-with-lease` rejects a push, it means the remote branch changed since your last fetch. Do not use `--force` to bypass this — fetch first, then rebase onto the updated remote:
 
 ```bash
-# Only for the branch GitHub mutated
-git push origin <branch> --force
-# All other branches still use --force-with-lease
+git fetch origin
+git rebase origin/master   # or the appropriate upstream
+git push origin <branch> --force-with-lease
 ```
+
+`--force-with-lease` exists to prevent overwriting changes you haven't seen. Bypassing it with `--force` erases whatever changed on the remote without checking. Always fetch and rebase first — if the rebase is correct, `--force-with-lease` will succeed.
 
 ## Prefer rebase over manual cherry-picks
 
