@@ -13,6 +13,18 @@ When multiple PRs are in flight, they form a linear chain for sequential rebase 
 
 Each commit belongs to exactly one PR by semantic concern. Map commits to PRs before creating branches. A commit belongs to the PR whose purpose it serves, not the branch it happened to land on during development.
 
+### Branch naming
+
+Do not create a GitHub PR at the same time as the first commit. The scope often changes as work progresses, and branch names on GitHub are effectively permanent (renaming requires closing and reopening PRs, breaking references).
+
+When starting new work locally, use a working name based on initial intent (`claude/<topic>` or `claude/wip-<topic>`). Iterate until the scope is clear, then rename the branch before running `gh pr create`:
+
+```bash
+git branch -m claude/wip-old-name claude/<final-name>
+```
+
+**Exception:** When splitting off an existing reviewed PR, the scope is already known — name immediately.
+
 ### Creating branches
 
 For initial construction of a stack, cherry-pick commits into purpose-built branches:
