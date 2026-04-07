@@ -53,6 +53,11 @@ The git disciplines in this repository's skills (`branch-rebase`, `wsl-nix-bridg
 
 Do not follow these rules mechanically. Understand the failure mode each one prevents, so you can apply the same reasoning to situations the rules don't explicitly cover.
 
+## Documentation
+
+- **Link rendered versions after pushing.** When documentation or markdown changes are pushed, provide the GitHub rendered URL for each affected file so the user can verify formatting: `https://github.com/<owner>/<repo>/blob/<branch>/<file>`.
+- **Use full PR URLs.** Always reference PRs and issues with full `https://github.com/...` URLs, not `owner/repo#N` shorthand. The shorthand is not clickable in the terminal.
+
 ## Skill Provenance
 
 The `pathwise-commit` and `pathwise-audit` skills originate from [spikespaz/claude](https://github.com/spikespaz/claude). When updating these skills, check the source repo for newer versions. All other skills (`branch-rebase`, `wsl-nix-bridge`, `pr-merge-procedure`, `pr-minification-split`, `nix-architecture`, `formatter-conflict-resolution`) are local to this repository.
