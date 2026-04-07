@@ -1,5 +1,5 @@
 { ... }: {
-  imports = [ ./portable-iso-impermanent.nix ];
+  imports = [ ./iso-impermanent.nix ];
 
   system.stateVersion = "25.05";
 
