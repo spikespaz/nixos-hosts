@@ -52,3 +52,7 @@ The git disciplines in this repository's skills (`branch-rebase`, `wsl-nix-bridg
 - **Verify content before deleting merged branches** catches unpushed local work that survived a PR merge with different hashes.
 
 Do not follow these rules mechanically. Understand the failure mode each one prevents, so you can apply the same reasoning to situations the rules don't explicitly cover.
+
+## Skill Provenance
+
+The `pathwise-commit` and `pathwise-audit` skills originate from [spikespaz/claude](https://github.com/spikespaz/claude). When updating these skills, check the source repo for newer versions. All other skills (`branch-rebase`, `wsl-nix-bridge`, `pr-merge-procedure`, `pr-minification-split`, `nix-architecture`, `formatter-conflict-resolution`) are local to this repository.
