@@ -2,7 +2,7 @@ name: Build birdboot-portable images
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - "flake.nix"
       - "flake.lock"
