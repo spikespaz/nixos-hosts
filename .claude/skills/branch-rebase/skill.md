@@ -175,6 +175,19 @@ git diff <branch> origin/master --stat
 
 Empty diff and zero remaining commits confirms safe deletion. If any commits survive or the diff is non-empty, the branch has content not on master — ask the user before deleting.
 
+## Rebase conflicts are not merge conflicts
+
+In a merge, both sides are peers — you combine them. In a rebase, one side is the truth (the new base) and the other is being replayed onto it. Do not apply merge-conflict intuition to rebase conflicts.
+
+When a rebase step conflicts:
+
+1. **Check if it's a duplicate.** If the commit's changes already exist on the new base (from a prior merge or cherry-pick), skip it: `git rebase --skip`.
+2. **Check if it's a formatting conflict.** If the only differences are whitespace or style, use the `formatter-conflict-resolution` skill.
+3. **If it's a real semantic conflict**, the replayed commit needs adaptation to the new base. Take the base version (`--ours` in rebase context is the new base) and apply only the semantic change from the replayed commit. Do not try to "keep both sides" — that is merge thinking.
+4. **If unsure, abort.** `git rebase --abort` and report. A wrong resolution silently corrupts history; aborting preserves it.
+
+The most common mistake is treating a rebase conflict like a merge and manually combining both sides. This produces duplicate code, stale references, or mixed formatting. When in doubt, skip or abort — never guess.
+
 ## Never re-create changes manually
 
 When a change needs to be moved, restored, or re-applied, always use `git cherry-pick` or `git rebase` — never re-type or re-apply the diff manually as a new commit. Cherry-pick and rebase surface merge conflicts explicitly; manual re-creation silently overwrites them, hiding divergence that should be resolved.
