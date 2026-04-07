@@ -1,0 +1,116 @@
+name: Nix Build (cached)
+
+on:
+  workflow_call:
+    inputs:
+      attr:
+        description: "Nix attribute to build"
+        required: true
+        type: string
+      artifact-name:
+        description: "Base name for the artifact"
+        required: true
+        type: string
+      artifact-path:
+        description: "Glob path to upload from result"
+        required: true
+        type: string
+      retention-days:
+        description: "Artifact retention in days"
+        required: false
+        type: number
+        default: 7
+      cache-max-mb:
+        description: "Max binary cache size in MB (0 = no limit)"
+        required: false
+        type: number
+        default: 1024
+      runner:
+        description: "Runner label"
+        required: false
+        type: string
+        default: "ubuntu-latest"
+
+env:
+  LOCAL_CACHE: /tmp/nix-binary-cache
+
+jobs:
+  build:
+    runs-on: ${{ inputs.runner }}
+    name: ${{ inputs.artifact-name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: nixbuild/nix-quick-install-action@v32
+        with:
+          nix_conf: |
+            pure-eval = true
+            allow-import-from-derivation = false
+
+      - name: Compute derivation hash
+        id: drv-hash
+        run: |
+          drv_path=$(nix eval --raw '.#${{ inputs.attr }}.drvPath' 2>/dev/null || echo "unknown")
+          drv_hash=$(basename "$drv_path" | cut -d'-' -f1)
+          echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
+          echo "Cache key: drv-$drv_hash"
+
+      - name: Restore local binary cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.LOCAL_CACHE }}
+          key: nix-${{ inputs.artifact-name }}-drv-${{ steps.drv-hash.outputs.hash }}
+          restore-keys: |
+            nix-${{ inputs.artifact-name }}-drv-
+
+      - name: Import from local cache
+        run: |
+          if [ -f "$LOCAL_CACHE/nix-cache-info" ]; then
+            echo "Importing from local binary cache..."
+            nix copy --from "file://$LOCAL_CACHE" --all --no-check-sigs 2>/dev/null || true
+          else
+            echo "No local cache found, building from scratch."
+          fi
+
+      - name: Build
+        run: >
+          nix build '.#${{ inputs.attr }}'
+          --print-build-logs
+
+      - name: Upload artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: ${{ inputs.artifact-path }}
+          retention-days: ${{ inputs.retention-days }}
+
+      - name: Export closure to local cache
+        if: always()
+        run: |
+          if [ ! -L ./result ]; then exit 0; fi
+          mkdir -p "$LOCAL_CACHE"
+          for path in $(nix path-info --recursive ./result 2>/dev/null | grep -v "$(readlink -f ./result)"); do
+            nix copy --to "file://$LOCAL_CACHE" "$path" 2>/dev/null || true
+          done
+
+          CACHE_MAX_MB=${{ inputs.cache-max-mb }}
+          if [ "$CACHE_MAX_MB" -gt 0 ] 2>/dev/null; then
+            cache_mb=$(du -sm "$LOCAL_CACHE" | cut -f1)
+            echo "Cache size: ${cache_mb}MB (budget: ${CACHE_MAX_MB}MB)"
+            if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
+              echo "Pruning oldest NARs..."
+              while [ "$(du -sm "$LOCAL_CACHE" | cut -f1)" -gt "$CACHE_MAX_MB" ]; do
+                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' 2>/dev/null | sort | head -1 | cut -d' ' -f2)
+                if [ -z "$oldest" ]; then break; fi
+                rm -f "$oldest"
+              done
+              for ni in "$LOCAL_CACHE"/*.narinfo; do
+                nar_url=$(grep "^URL:" "$ni" 2>/dev/null | sed 's|^URL: ||')
+                if [ -n "$nar_url" ] && [ ! -f "$LOCAL_CACHE/$nar_url" ]; then
+                  rm -f "$ni"
+                fi
+              done
+              echo "Cache after pruning: $(du -sm "$LOCAL_CACHE" | cut -f1)MB"
+            fi
+          fi
