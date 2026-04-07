@@ -1,4 +1,4 @@
-name: Nix Build (cached)
+name: Nix Build (cached, deduplicated)
 
 on:
   workflow_call:
@@ -55,7 +55,25 @@ jobs:
           echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
           echo "Cache key: drv-$drv_hash"
 
+      - name: Check for existing artifact
+        id: check-existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          artifact_name="${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}"
+          existing=$(gh api repos/${{ github.repository }}/actions/artifacts \
+            --jq ".artifacts[] | select(.name == \"$artifact_name\" and .expired == false) | .id" \
+            2>/dev/null | head -1)
+          if [ -n "$existing" ]; then
+            echo "Artifact '$artifact_name' already exists (id: $existing). Skipping build."
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No existing artifact for '$artifact_name'. Building."
+            echo "skipped=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Restore local binary cache
+        if: steps.check-existing.outputs.skipped != 'true'
         uses: actions/cache@v4
         with:
           path: ${{ env.LOCAL_CACHE }}
@@ -64,6 +82,7 @@ jobs:
             nix-${{ inputs.artifact-name }}-drv-
 
       - name: Import from local cache
+        if: steps.check-existing.outputs.skipped != 'true'
         run: |
           if [ -f "$LOCAL_CACHE/nix-cache-info" ]; then
             echo "Importing from local binary cache..."
@@ -73,20 +92,21 @@ jobs:
           fi
 
       - name: Build
+        if: steps.check-existing.outputs.skipped != 'true'
         run: >
           nix build '.#${{ inputs.attr }}'
           --print-build-logs
 
       - name: Upload artifact
-        if: success()
+        if: steps.check-existing.outputs.skipped != 'true' && success()
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.artifact-name }}
+          name: ${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}
           path: ${{ inputs.artifact-path }}
           retention-days: ${{ inputs.retention-days }}
 
       - name: Export closure to local cache
-        if: always()
+        if: steps.check-existing.outputs.skipped != 'true' && always()
         run: |
           if [ ! -L ./result ]; then exit 0; fi
           mkdir -p "$LOCAL_CACHE"
