@@ -115,6 +115,30 @@ git checkout -B <branch> <good-ref>
 
 The bad state remains in the reflog if you need it later.
 
+## Cascade rebase for stacked branches
+
+When multiple branches form a linear chain (each forked from the previous), rebasing one branch requires rebasing every downstream branch. A rebase cascade is atomic — do not push until all branches in the chain are rebased and verified.
+
+For each branch in order:
+
+```bash
+git checkout <branch>
+git rebase <parent-branch>
+git log --oneline HEAD --not <parent-branch>
+```
+
+If any branch becomes empty after rebase (all commits absorbed by upstream), its PR can be closed.
+
+## Force-push rejection after external merge
+
+When GitHub merges a PR (or the user merges on the web), the remote branch SHA changes in a way the local tracking ref doesn't know about. `--force-with-lease` rejects the push for that branch. Use `--force` for the affected branch only — not as a blanket flag:
+
+```bash
+# Only for the branch GitHub mutated
+git push origin <branch> --force
+# All other branches still use --force-with-lease
+```
+
 ## Prefer rebase over manual cherry-picks
 
 **Always use `git rebase` instead of reconstructing a branch from scratch with cherry-picks.** Rebase:
