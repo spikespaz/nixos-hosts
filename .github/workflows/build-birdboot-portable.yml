@@ -25,6 +25,7 @@ env:
 
 jobs:
   build-x86_64:
+    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
     uses: ./.github/workflows/nix-build-cached.yml
     with:
       attr: nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
