@@ -1,5 +1,5 @@
 { ... }: {
-  image.modules.iso-impermanent = { modulesPath, ... }: {
+  image.modules.iso-impermanent = { lib, pkgs, modulesPath, config, ... }: {
     imports = [
       # modulesPath is a config-independent argument from lib.evalModules
       # (set in nixos/lib/eval-config.nix). Using pkgs.path here would
@@ -7,12 +7,29 @@
       # must resolve before config is available.
       (modulesPath + "/installer/cd-dvd/iso-image.nix")
     ];
-    # isoImage.edition is inserted into the ISO filename after "nixos-":
-    # nixos-${edition}-${label}-${system}.iso
-    # See: https://github.com/NixOS/nixpkgs/blob/b93ddcb44dbf1472f3aac7694922235dc88a8cbd/nixos/modules/installer/cd-dvd/iso-image.nix#L1033-L1035
-    # Keep edition short — volumeID has a 32-char ISO 9660 limit
-    # and is derived from edition: nixos-${edition}-${release}-${arch}
-    isoImage.edition = "birdboot";
+
+    # Reserved for a future feature-set shortcode.
+    # When non-empty, appears in both baseName and volumeID.
+    isoImage.edition = "";
+
+    # ${distroName}-${edition?}-${label}-${system}.iso
+    # mkForce: iso-image.nix hardcodes "nixos" as a bare assignment (priority 100).
+    # See: https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/installer/cd-dvd/iso-image.nix#L1033-L1035
+    image.baseName = lib.mkForce (lib.concatStringsSep "-" (
+      [ (lib.toLower config.system.nixos.distroName) ]
+      ++ lib.optional (config.isoImage.edition != "") config.isoImage.edition
+      ++ [ config.system.nixos.label pkgs.stdenv.hostPlatform.system ]
+    ));
+
+    # ISO 9660 volume label — used at boot by the initrd to locate
+    # and mount the CD/USB device (root=LABEL=...). Max 32 characters.
+    # ${distroName}-${edition?}-${release}-${arch}
+    isoImage.volumeID = lib.concatStringsSep "-" (
+      [ (lib.toLower config.system.nixos.distroName) ]
+      ++ lib.optional (config.isoImage.edition != "") config.isoImage.edition
+      ++ [ config.system.nixos.release pkgs.stdenv.hostPlatform.uname.processor ]
+    );
+
     isoImage.squashfsCompression = "zstd -Xcompression-level 19";
 
     # These three options are independent — each adds a different boot
