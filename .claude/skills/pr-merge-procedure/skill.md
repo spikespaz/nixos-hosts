@@ -5,6 +5,38 @@ description: Procedures for finalizing and merging a set of PR branches. Two mod
 
 # PR Merge Procedure
 
+## Stack construction
+
+When multiple PRs are in flight, they form a linear chain for sequential rebase merge. The goal: merging PRs in order produces a clean linear history where commit hashes are preserved through each merge.
+
+### Mapping commits to PRs
+
+Each commit belongs to exactly one PR by semantic concern. Map commits to PRs before creating branches. A commit belongs to the PR whose purpose it serves, not the branch it happened to land on during development.
+
+### Creating branches
+
+For initial construction of a stack, cherry-pick commits into purpose-built branches:
+
+```bash
+# First PR: fork from master
+git checkout -B <branch1> origin/master
+git cherry-pick <commits...>
+
+# Subsequent PRs: fork from the previous
+git checkout -B <branch2> <branch1>
+git cherry-pick <commits...>
+```
+
+Cherry-pick is appropriate for initial construction (selecting specific commits into new branches). Rebase is appropriate for maintenance (keeping existing branches current). See `branch-rebase` for the cascade procedure.
+
+### Base branch policy
+
+All PR bases target master. Merge order is enforced by convention (documented in PR bodies), not by base targeting. Setting prerequisite branches as bases causes commits to land on feature branches when merged out of order.
+
+### Reopen, don't recreate
+
+When correcting a mistake on a closed PR, reopen the existing PR rather than creating a new one. Reopening preserves the review history and comment threads.
+
 ## Batch mode (user-driven)
 
 The user reviews and merges PRs one at a time. After each merge, the agent rebases all remaining branches onto the updated master to confirm that merged content disappears from diffs.
