@@ -1,17 +1,76 @@
 ---
 name: session-continuity
-description: Preserve session context across compaction boundaries. Write memory files with transcript source references, create session indexes, and enable selective transcript recovery for the next agent.
+description: Boot sequence after compaction, skill preservation across context boundaries, session indexes for handoff. Read this skill FIRST after any compaction or session start — it tells you how to load everything else.
 ---
 
 # Session Continuity
 
-## Problem
+## The bootstrapping problem
 
-When a session exhausts context, the next agent gets a lossy summary. Memories exist but lack provenance — the next agent doesn't know why a decision was made or what conversation produced it. The full transcript is available but too large to read whole, and the next agent doesn't know what to search for.
+After compaction, the agent has a narrative summary (what was decided) but no procedural knowledge (how to work). Skills contain the procedure, but the agent must know to read them — and know WHERE to read them, since skills may live on a PR branch, not the current branch.
 
-## Protocol
+The anchor point is `MEMORY.md` — it's loaded into context automatically. Everything else requires deliberate action.
 
-### During the session
+## Boot sequence (after compaction or session start)
+
+Before touching any code, before answering any user request, execute this sequence. This is not optional — skipping it produces an agent that appears significantly less competent.
+
+### 1. Read MEMORY.md (automatic)
+
+Already in context. Scan for the `feedback_read_skills_first.md` entry and any session state entries.
+
+### 2. Identify the skills branch
+
+Skills may not be on the current branch. Check which branch has the latest skills:
+
+```bash
+# Find branches with skills
+git log --all --oneline -- '.claude/skills/*/skill.md' | head -10
+```
+
+Or check memory files — the session state or PR structure memory will name the skills PR branch.
+
+### 3. Read ALL skills from the skills branch
+
+```bash
+git show <skills-branch>:.claude/skills/<name>/skill.md
+```
+
+Read every skill. Not the one-line descriptions in the system prompt — the full files. The descriptions tell you a skill exists; the content tells you how to follow it. The difference between "agent with skills loaded" and "agent without" is large enough to be mistaken for a capability difference.
+
+### 4. Read CLAUDE.md from the skills branch
+
+The working branch may have a stale copy. The skills branch has the latest project conventions.
+
+```bash
+git show <skills-branch>:CLAUDE.md
+```
+
+### 5. Check for session indexes
+
+```bash
+ls .claude/notes/session-index-*.md
+# or on the skills branch:
+git ls-tree <skills-branch> .claude/notes/
+```
+
+Read the most recent session index. Focus on "Next steps," "Blockers," and "Skills modified."
+
+### 6. Read supplementary notes if present
+
+Session indexes may reference tacit knowledge docs, trust journals, or attention state maps. These encode the predecessor's judgment — not instructions to follow, but reasoning to learn from.
+
+### 7. Now begin work
+
+Only after steps 1–6 should you switch to the working branch, read review comments, or make code changes.
+
+## Branch switching
+
+When switching branches during a session, skills may diverge. If you switch away from the skills branch, your loaded skill content is still valid — but if you notice yourself uncertain about procedure, re-read the relevant skill from the skills branch before proceeding.
+
+## During the session
+
+### Memory provenance
 
 When creating memory files, add a `source` block to the frontmatter:
 
@@ -22,59 +81,69 @@ description: <description>
 type: <type>
 source:
   transcript: <session-id>.jsonl
-  search: "<grep-able string from the conversation that produced this memory>"
+  search: "<grep-able string from the user's message that produced this>"
+  context_pct: <percentage of context used when written>
 ---
 ```
 
-The `search` field should be a distinctive quote from the user's message that triggered the memory — not the agent's interpretation. This is the grep target for transcript recovery.
+The `search` field must be a distinctive quote from the USER's message — not the agent's interpretation. This is the grep target for transcript recovery.
 
-### Before context exhaustion
+`context_pct` lets the next agent weight reliability: low % = high fidelity, high % = triage-only.
 
-Write a session index at `.claude/notes/session-index-<session-id>.md` containing:
+### Recognizing degradation
 
-1. **Memories created/updated** — each with its grep target
-2. **Key decisions** — grep-able quotes for significant choices, with one-line rationale
-3. **Skills created/modified** — list of files changed
-4. **Open threads** — PRs, issues, branches with current state
-5. **Next steps (prioritized)** — ordered by urgency, with rationale for ordering
-6. **Blockers** — things the next agent should know before starting
+As context fills, the agent shifts from direct recall to file lookups to guessing from compressed context. The danger zone is when you THINK you remember but the memory is from a compressed summary, not the original conversation. Signs:
 
-### When continuing a session
+- You're confident about a fact but can't point to where you learned it
+- You're about to rebase or push without checking the skill procedure
+- You're reaching for `--amend` or `--force` under time pressure
 
-The next agent should:
+When you notice these, stop and read the relevant skill file. The skills exist to substitute for degraded attention.
 
-1. Read `MEMORY.md` index as usual
-2. Check for session index files in `.claude/notes/session-index-*.md`
-3. For the most recent session index, read the "Next steps" and "Blockers" sections
-4. When a memory's `source` field is present and the current task relates to that memory, grep the transcript for surrounding context (±50 lines) rather than trusting the memory body alone
+## Before context exhaustion
 
-### Selective transcript recovery
+Write a session index at `.claude/notes/session-index-<session-id>.md`:
+
+1. **Boot instructions for next agent** — which branch has skills, which branch is active, what's checked out where
+2. **Memories created/updated** — each with its grep target
+3. **Key decisions** — grep-able quotes for significant choices
+4. **Skills created/modified** — list of files changed, which branch
+5. **Open threads** — PRs, issues, branches with current state
+6. **Next steps (prioritized)** — ordered by urgency, with rationale
+7. **Blockers** — things the next agent must know before starting
+
+The session index is a **map**, not a summary. It tells the next agent where to look, not what happened.
+
+### Supplementary documents (optional)
+
+If context permits, write documents that encode judgment the skills can't capture:
+
+- **Tacit knowledge** — user preferences observed but not codified
+- **Trust journal** — what the agent learned to rely on, and why
+- **Attention state** — what's clear vs fuzzy vs lost at time of writing
+
+These are not instructions. They're the reasoning of a predecessor who made mistakes and learned from them. The next agent should read them as context, not directives.
+
+## Selective transcript recovery
 
 ```bash
 # Find the conversation that produced a memory
 grep -n "<search term>" <transcript>.jsonl | head -5
 
-# Read surrounding context
+# Read surrounding context (±50 lines)
 sed -n '<line-50>,<line+50>p' <transcript>.jsonl
 ```
 
 The transcript is the authoritative record. Memories are summaries. When they conflict, the transcript wins.
 
-## What the session index is NOT
+## What fails without this skill
 
-- Not a summary of the conversation (that's what compaction produces)
-- Not a replacement for memories (memories are the persistent store)
-- Not comprehensive (it indexes significant decisions, not every message)
+A post-compaction agent that skips the boot sequence will:
+- Read stale skills from the wrong branch
+- Strip source permalink citations (violating source-research skill)
+- Batch review fixes into new commits instead of rebasing (violating pathwise-commit and pr-merge-procedure)
+- Miss top-level review comments
+- Break git rename detection with oversized diffs
+- Appear to the user as significantly less competent
 
-It is a **map** — it tells the next agent where to look, what to prioritize, and what to avoid. A table of contents is insufficient; the index must include rationale and priority.
-
-## Quality signal
-
-The `context_pct` field (optional) in memory source blocks records how full context was when the memory was written:
-
-- Low % (10-30%): fresh context, high fidelity, full conversation history available
-- Mid % (30-60%): good context, reliable memories
-- High % (60-80%): compressed context, memories may miss nuance
-- Very high % (80%+): near exhaustion, memories are most-important-only
-
-This lets the next agent weight memories by reliability.
+These are not hypothetical — they are documented failures from session `5e4dd978` → post-compaction continuation.
