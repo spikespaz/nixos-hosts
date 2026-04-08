@@ -191,6 +191,8 @@ What NOT to give:
 
 The delegation decision is itself a self-check: writing the prompt forces the planning that shortcuts would skip. Sometimes you write the delegation prompt and realize you can just follow it yourself.
 
+**3. Verify.** Subagent output needs the same audit as your own output. After delegation, check what changed — don't trust the report. Memory files aren't git-tracked, so there's no diff to review; read the files and verify against ground truth (`gh pr list`, `git branch`, etc.). A subagent that introduces a small inaccuracy into a memory file corrupts every future agent that reads it.
+
 ## Before context exhaustion
 
 The session index should already exist and be current (see "Session index maintenance"). Before exhaustion, do a final review:
