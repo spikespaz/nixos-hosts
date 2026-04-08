@@ -11,24 +11,36 @@ After compaction, the agent has a narrative summary (what was decided) but no pr
 
 The anchor point is `MEMORY.md` — it's loaded into context automatically. Everything else requires deliberate action.
 
-## Boot sequence (after compaction or session start)
+## Skill reload tiers
 
-Before touching any code, before answering any user request, execute this sequence. This is not optional — skipping it produces an agent that appears significantly less competent.
+The cost of not reading a skill you need (hours of rework, user trust lost) far exceeds the cost of re-reading one you already know (~2k tokens). Bias toward re-reading.
+
+| Trigger | Action | Cost |
+|---|---|---|
+| Compaction or fresh session | Full boot: reload ALL skills | ~17k tokens |
+| Branch switch | Re-read skills relevant to next task | ~2-5k tokens |
+| Before multi-step operation | Re-read that specific skill | ~2k tokens |
+| Continuous work, no context break | Don't re-read | 0 |
+
+After compaction, memory can't tell you which skills you've "forgotten" — the continuation summary preserves decisions, not procedure. Full reload is the only safe option.
+
+Within a session, the decision of *which* skills to re-read is driven by what task is next, not by what you remember having read. About to rebase? Re-read branch-rebase. About to commit? Re-read pathwise-commit.
+
+## Full boot (after compaction or session start)
+
+Before touching any code, before answering any user request, execute this sequence. ~17k tokens — non-negotiable.
 
 ### 1. Read MEMORY.md (automatic)
 
-Already in context. Scan for the `feedback_read_skills_first.md` entry and any session state entries.
+Already in context. Scan for session index, feedback entries, and supplementary notes (tacit knowledge, trust journals).
 
 ### 2. Identify the skills branch
 
-Skills may not be on the current branch. Check which branch has the latest skills:
+Skills may not be on the current branch. Check memory files for the skills PR branch name, or:
 
 ```bash
-# Find branches with skills
 git log --all --oneline -- '.claude/skills/*/skill.md' | head -10
 ```
-
-Or check memory files — the session state or PR structure memory will name the skills PR branch.
 
 ### 3. Read ALL skills from the skills branch
 
@@ -36,37 +48,27 @@ Or check memory files — the session state or PR structure memory will name the
 git show <skills-branch>:.claude/skills/<name>/skill.md
 ```
 
-Read every skill. Not the one-line descriptions in the system prompt — the full files. The descriptions tell you a skill exists; the content tells you how to follow it. The difference between "agent with skills loaded" and "agent without" is large enough to be mistaken for a capability difference.
+Read every skill — the full files, not the one-line descriptions in the system prompt. The descriptions tell you a skill exists; the content tells you how to follow it.
 
 ### 4. Read CLAUDE.md from the skills branch
 
-The working branch may have a stale copy. The skills branch has the latest project conventions.
+The working branch may have a stale copy.
 
 ```bash
 git show <skills-branch>:CLAUDE.md
 ```
 
-### 5. Check for session indexes
+### 5. Read session index and supplementary notes
 
-```bash
-ls .claude/notes/session-index-*.md
-# or on the skills branch:
-git ls-tree <skills-branch> .claude/notes/
-```
+The session index is in the memory directory (branch-independent). Supplementary notes (tacit knowledge, trust journals) may also be in the memory directory. These encode the predecessor's judgment — read them as context, not directives.
 
-Read the most recent session index. Focus on "Next steps," "Blockers," and "Skills modified."
+### 6. Now begin work
 
-### 6. Read supplementary notes if present
+Only after steps 1–5 should you switch to the working branch, read review comments, or make code changes.
 
-Session indexes may reference tacit knowledge docs, trust journals, or attention state maps. These encode the predecessor's judgment — not instructions to follow, but reasoning to learn from.
+## Branch switch reload
 
-### 7. Now begin work
-
-Only after steps 1–6 should you switch to the working branch, read review comments, or make code changes.
-
-## Branch switching
-
-When switching branches during a session, skills may diverge. If you switch away from the skills branch, your loaded skill content is still valid — but if you notice yourself uncertain about procedure, re-read the relevant skill from the skills branch before proceeding.
+When switching branches, re-read the skills relevant to the work you're about to do on the new branch. You don't need all skills — just the ones for your next task. Also update the session index (in the memory directory) with a topic boundary entry logging the switch.
 
 ## Session index maintenance
 
@@ -150,7 +152,7 @@ The `search` field must be a distinctive quote from the USER's message — not t
 
 `context_pct` lets the next agent weight reliability: low % = high fidelity, high % = triage-only.
 
-### Recognizing degradation
+### Degradation and escalation
 
 Attention loss is not forgetting facts. It is **stopping the self-check loop.** At full attention, every action goes through: "what does the skill say? → does my plan match? → execute." Under load, the loop collapses to just "execute."
 
@@ -162,43 +164,32 @@ Signs the loop has collapsed:
 - You're "cleaning up" code without verifying what the cleanup removes
 - You're batching changes because doing them individually feels slow
 
-When you notice these, stop. The next section describes what to do.
+When you notice these, escalate through the reload tiers:
 
-### Delegation as context preservation
+**1. Micro-boot (re-read the skill).** Before any multi-step operation — rebase, review resolution, branch split — re-read the relevant skill from the file, not from recall. ~2k tokens, 30 seconds. This prevents cascading errors from degraded procedure recall. Especially important after branch switches, which clear working state.
 
-When attention degrades, delegation to a subagent isn't just for parallelism — it's for context isolation. A fresh agent with only the relevant skill loaded will follow procedure more reliably than a fatigued agent operating from degraded recall.
+**2. Delegate.** If you aren't confident you'll execute each step precisely even after re-reading, delegate to a fresh subagent. Delegation isn't just for parallelism — it's for context isolation. A fresh agent with only the relevant skill loaded follows procedure more reliably than a fatigued agent.
 
-**When to delegate:**
+When to delegate:
+- The task follows a multi-step skill and you notice shortcuts creeping in
+- You're holding concurrent state (multiple review threads, commit graphs, thread IDs)
+- The task is self-contained — the subagent can complete it without conversation history
 
-- The task follows a multi-step skill (rebase, audit, review resolution) and you aren't confident you'll execute each step precisely
-- You're about to switch branches or topics, and the current task is self-contained
-- You've been holding concurrent state (multiple review threads, commit graphs, thread IDs) and notice shortcuts creeping in
+When NOT to delegate:
+- The task requires judgment from this conversation that the subagent won't have
+- Re-reading the skill is sufficient to restore confidence
+- You need the result immediately
 
-**When NOT to delegate:**
+What to give the subagent:
+- The full skill content inline (it can't read from other branches)
+- Exact files, branch, commit range, expected outcome
+- Constraints from the conversation (e.g., "rebase into affected commits, not new ones")
 
-- The task requires judgment from this conversation's history that the subagent won't have
-- The task is small enough that re-reading the skill section is sufficient
-- You need the result immediately and can't afford async overhead
+What NOT to give:
+- The entire session history — defeats isolation
+- Vague instructions — if you can't specify the task clearly, you haven't understood it
 
-**What to give the subagent:**
-
-- The full skill content (inline in the prompt — the subagent can't read from other branches)
-- The exact files, branch, and commit range involved
-- The expected outcome and verification steps
-- Constraints from the conversation: "user wants rebased commits, not new ones," "comments must cite source permalinks," etc.
-
-**What NOT to give the subagent:**
-
-- The entire session history — that defeats the purpose of isolation
-- Vague instructions like "fix the review comments" — be specific about which comments and which commits
-
-The delegation decision is itself a self-check: if you can't clearly specify what the subagent should do, you haven't understood the task well enough to execute it yourself either. Write the delegation prompt, then decide whether to send it or just follow it yourself.
-
-### Micro-boot before multi-step operations
-
-Before starting a rebase, review resolution, branch split, or any operation that spans multiple commits or files, re-read the relevant skill section. Not from memory — from the file. This takes 30 seconds and prevents the cascading errors that come from operating on a degraded version of the procedure.
-
-This is especially important after branch switches, which clear working state.
+The delegation decision is itself a self-check: writing the prompt forces the planning that shortcuts would skip. Sometimes you write the delegation prompt and realize you can just follow it yourself.
 
 ## Before context exhaustion
 
