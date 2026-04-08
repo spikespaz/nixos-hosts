@@ -55,6 +55,32 @@ When a branch mixes two independent topics:
 
 Both branches now cleanly extend master with only their own commits.
 
+## Inserting a commit between existing commits
+
+Use the `break` keyword in the interactive rebase todo list to pause between picks:
+
+```bash
+git rebase -i origin/master
+```
+
+In the todo editor, add `break` where the new commit should go:
+
+```
+pick abc1234 first commit
+break
+pick def5678 second commit
+```
+
+Git replays the first commit, then stops. You are on the branch (not detached HEAD), so create the new commit normally:
+
+```bash
+git add <files>
+git commit -m "..."
+git rebase --continue
+```
+
+This is cleaner than marking a commit as `edit` and committing during the edit step — `edit` is for modifying an existing commit, `break` is for inserting between them.
+
 ## Splitting a commit
 
 When a commit bundles two independent changes (fails the "and" test), split it during interactive rebase:
