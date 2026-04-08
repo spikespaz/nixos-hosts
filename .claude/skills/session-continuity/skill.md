@@ -68,6 +68,60 @@ Only after steps 1–6 should you switch to the working branch, read review comm
 
 When switching branches during a session, skills may diverge. If you switch away from the skills branch, your loaded skill content is still valid — but if you notice yourself uncertain about procedure, re-read the relevant skill from the skills branch before proceeding.
 
+## Session index maintenance
+
+The session index is a living document, not a death-dump. Update it incrementally at natural boundaries:
+
+- **Topic switch** — the user changes subject or asks about something unrelated
+- **Branch switch** — context about the previous branch may not survive
+- **Significant decision** — a choice that will affect future work
+- **After completing a unit of work** — PR submitted, issue created, rebase finished
+
+At each boundary, append a short entry (~100-300 tokens) summarizing the chunk of work just completed: what was done, what was decided, what grep target recovers the conversation.
+
+**Not every message is a boundary.** A single off-topic question doesn't warrant an index entry. But if you're uncertain, write the entry — more entries means more noise, but the noise-to-signal ratio is itself a useful metric. High entry frequency in a short span tells the next agent the session was fragmented. Low frequency says it was focused.
+
+The index grows throughout the session. Before context exhaustion, review and consolidate — merge redundant entries, promote key decisions to the top, ensure "Next steps" and "Blockers" are current.
+
+### Where to write it
+
+```
+.claude/notes/session-index-<session-id>.md
+```
+
+Create early in the session (after the first natural boundary), not at the end. A session index that only exists if the agent had time to write it before dying defeats the purpose.
+
+### Structure
+
+1. **Boot instructions for next agent** — which branch has skills, which branch is active, what's checked out where
+2. **Memories created/updated** — each with its grep target
+3. **Key decisions** — grep-able quotes for significant choices
+4. **Skills created/modified** — list of files changed, which branch
+5. **Open threads** — PRs, issues, branches with current state
+6. **Next steps (prioritized)** — ordered by urgency, with rationale
+7. **Blockers** — things the next agent must know before starting
+8. **Chronological log** — append-only entries from topic boundaries
+
+The first 7 sections are maintained (updated as state changes). Section 8 is append-only — new entries go at the bottom.
+
+## Context budget
+
+The next agent must load skills, MEMORY.md, CLAUDE.md, and the session index before starting work. This competes with the context window available for actual conversation.
+
+**Target: boot reads under 25k tokens.** This keeps total overhead (system prompt + tools + boot) under 60k, leaving ~140k for work on standard 200k Opus and ~940k on 1M.
+
+| Category | Tokens | Notes |
+|---|---|---|
+| Full skill reads (~10 skills) | ~17k | Non-negotiable — proven essential |
+| CLAUDE.md | ~2k | Auto-loaded but may need skills-branch version |
+| Session index (latest) | ~2-3k | Keep concise — map, not narrative |
+| Memory files | On-demand | Read when relevant to current task, not at boot |
+| Supplementary notes | On-demand | Trust journal, tacit knowledge — read if time permits |
+
+If the session index exceeds ~3k tokens, it's too verbose. Consolidate entries, collapse resolved items, move detail into memory files.
+
+Memory files are read on-demand, not at boot. The boot sequence loads the index of what exists (MEMORY.md, ~600 tokens), not every file. Individual memories are read when the agent encounters a related task.
+
 ## During the session
 
 ### Memory provenance
@@ -102,27 +156,16 @@ When you notice these, stop and read the relevant skill file. The skills exist t
 
 ## Before context exhaustion
 
-Write a session index at `.claude/notes/session-index-<session-id>.md`:
+The session index should already exist and be current (see "Session index maintenance"). Before exhaustion, do a final review:
 
-1. **Boot instructions for next agent** — which branch has skills, which branch is active, what's checked out where
-2. **Memories created/updated** — each with its grep target
-3. **Key decisions** — grep-able quotes for significant choices
-4. **Skills created/modified** — list of files changed, which branch
-5. **Open threads** — PRs, issues, branches with current state
-6. **Next steps (prioritized)** — ordered by urgency, with rationale
-7. **Blockers** — things the next agent must know before starting
+1. Consolidate — merge redundant chronological entries, ensure sections 1–7 are current
+2. Write supplementary documents if context permits and the session was long enough to accumulate tacit knowledge:
+   - **Tacit knowledge** — user preferences observed but not codified
+   - **Trust journal** — what the agent learned to rely on, and why
+   - **Attention state** — what's clear vs fuzzy vs lost at time of writing
+3. Verify "Next steps" are actionable — the next agent should be able to start from step 1 without guessing
 
-The session index is a **map**, not a summary. It tells the next agent where to look, not what happened.
-
-### Supplementary documents (optional)
-
-If context permits, write documents that encode judgment the skills can't capture:
-
-- **Tacit knowledge** — user preferences observed but not codified
-- **Trust journal** — what the agent learned to rely on, and why
-- **Attention state** — what's clear vs fuzzy vs lost at time of writing
-
-These are not instructions. They're the reasoning of a predecessor who made mistakes and learned from them. The next agent should read them as context, not directives.
+These supplementary documents are not instructions. They're the reasoning of a predecessor who made mistakes and learned from them. The next agent should read them as context, not directives.
 
 ## Selective transcript recovery
 
