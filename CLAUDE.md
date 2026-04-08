@@ -64,6 +64,22 @@ Do not follow these rules mechanically. Understand the failure mode each one pre
 - **Link rendered versions after pushing.** When documentation or markdown changes are pushed, provide the GitHub rendered URL for each affected file so the user can verify formatting: `https://github.com/<owner>/<repo>/blob/<branch>/<file>`.
 - **Use full PR URLs.** Always reference PRs and issues with full `https://github.com/...` URLs, not `owner/repo#N` shorthand. The shorthand is not clickable in the terminal.
 
+## nixpkgs Source Paths
+
+<!-- Temporary location: project-specific quirk knowledge that agents discover
+     while researching. Keeping here until a better mechanism for accumulating
+     path knowledge exists — this table could grow large. -->
+
+Common paths under the nixpkgs store tree (`nix eval --raw nixpkgs#path`):
+
+| Path | Contains |
+|---|---|
+| `nixos/modules/installer/cd-dvd/` | ISO image builder, installer profiles |
+| `nixos/modules/hardware/` | `all-hardware.nix`, firmware options |
+| `nixos/modules/image/` | `file-options.nix` (`image.baseName`, etc.) |
+| `nixos/modules/misc/` | `version.nix` (distroName, label, variant_id) |
+| `nixos/lib/` | `make-iso9660-image.{nix,sh}`, `eval-config.nix` |
+
 ## Skill Provenance
 
 The `pathwise-commit` and `pathwise-audit` skills originate from [spikespaz/claude](https://github.com/spikespaz/claude). When updating these skills, check the source repo for newer versions. All other skills (`branch-rebase`, `wsl-nix-bridge`, `pr-merge-procedure`, `pr-minification-split`, `nix-architecture`, `formatter-conflict-resolution`) are local to this repository.
