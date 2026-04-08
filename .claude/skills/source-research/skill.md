@@ -1,6 +1,6 @@
 ---
-name: nixpkgs-source-research
-description: Research nixpkgs source code using the WSL nix store, nix eval, git blame, and GitHub permalinks. Produces citable findings with pinned commit hashes and line numbers.
+name: source-research
+description: Research upstream source code with citable permalink evidence. General methodology for any GitHub-hosted dependency, plus nixpkgs-specific conventions.
 ---
 
 # nixpkgs Source Research
