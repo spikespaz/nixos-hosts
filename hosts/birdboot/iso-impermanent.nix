@@ -32,6 +32,10 @@
 
     isoImage.squashfsCompression = "zstd -Xcompression-level 19";
 
+    # Boot menu entry: "${prependToMenuLabel}${distroName} ${label}${appendToMenuLabel}"
+    # isoImage.prependToMenuLabel = "";
+    isoImage.appendToMenuLabel = " [ISO]";
+
     # These three options are independent — each adds a different boot
     # mechanism to the ISO via xorriso flags. All three are needed for
     # a USB stick that boots on any firmware.
