@@ -70,8 +70,13 @@ jobs:
             --jq '.artifacts[] | select(.expired == false) | .id' \
             2>/dev/null | head -1)
           if [ -n "$existing" ]; then
-            echo "Artifact '$artifact_name' already exists (id: $existing). Skipping build."
+            run_id=$(gh api "repos/${{ github.repository }}/actions/artifacts/$existing" \
+              --jq '.workflow_run.id' 2>/dev/null)
+            url="https://github.com/${{ github.repository }}/actions/runs/${run_id}/artifacts/$existing"
+            echo "Artifact '$artifact_name' already exists: $url"
             echo "skipped=true" >> "$GITHUB_OUTPUT"
+            echo "### Deduplicated" >> "$GITHUB_STEP_SUMMARY"
+            echo "Existing artifact: [$artifact_name]($url)" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "No existing artifact for '$artifact_name'. Building."
             echo "skipped=false" >> "$GITHUB_OUTPUT"
