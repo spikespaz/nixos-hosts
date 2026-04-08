@@ -85,9 +85,15 @@ The index grows throughout the session. Before context exhaustion, review and co
 
 ### Where to write it
 
+Write the session index in the **memory directory** — the same directory as `MEMORY.md`. This is branch-independent: it survives branch switches, is auto-loaded into context, and doesn't pollute git history with ephemeral session state.
+
 ```
-.claude/notes/session-index-<session-id>.md
+<memory-directory>/session_index_active.md
 ```
+
+Add an entry to `MEMORY.md` pointing to it. One active index at a time — overwrite the previous session's index when starting a new one.
+
+Git-committed indexes (`.claude/notes/session-index-*.md`) are for archival handoff only — they become inaccessible after branch switches, which is when the index is needed most.
 
 Create early in the session (after the first natural boundary), not at the end. A session index that only exists if the agent had time to write it before dying defeats the purpose.
 
