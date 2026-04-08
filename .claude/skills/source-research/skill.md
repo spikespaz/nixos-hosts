@@ -84,21 +84,13 @@ After reading source, confirm with runtime checks. The source tells you what *sh
 
 ### Reading source
 
-The nix store contains the full nixpkgs tree. Locate and read directly:
+Resolve the exact store path for the flake's pinned nixpkgs:
 
 ```bash
-wsl.exe -- bash -c "find /nix/store -maxdepth 1 -name '*nixos*' -type d | head -5"
+wsl.exe -- bash -c "nix eval --raw nixpkgs#path"
 ```
 
-Key paths under `nixos/`:
-
-| Path | Contains |
-|---|---|
-| `modules/installer/cd-dvd/` | ISO image builder, installer profiles |
-| `modules/hardware/` | `all-hardware.nix`, firmware options |
-| `modules/image/` | `file-options.nix` (`image.baseName`, etc.) |
-| `modules/misc/` | `version.nix` (distroName, label, variant_id) |
-| `lib/` | `make-iso9660-image.{nix,sh}`, `eval-config.nix` |
+This returns the store path matching the flake.lock revision. Read files directly from there. Common nixpkgs paths are documented in CLAUDE.md.
 
 ### Evaluating config
 
