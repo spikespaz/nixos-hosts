@@ -146,13 +146,53 @@ The `search` field must be a distinctive quote from the USER's message — not t
 
 ### Recognizing degradation
 
-As context fills, the agent shifts from direct recall to file lookups to guessing from compressed context. The danger zone is when you THINK you remember but the memory is from a compressed summary, not the original conversation. Signs:
+Attention loss is not forgetting facts. It is **stopping the self-check loop.** At full attention, every action goes through: "what does the skill say? → does my plan match? → execute." Under load, the loop collapses to just "execute."
+
+Signs the loop has collapsed:
 
 - You're confident about a fact but can't point to where you learned it
 - You're about to rebase or push without checking the skill procedure
 - You're reaching for `--amend` or `--force` under time pressure
+- You're "cleaning up" code without verifying what the cleanup removes
+- You're batching changes because doing them individually feels slow
 
-When you notice these, stop and read the relevant skill file. The skills exist to substitute for degraded attention.
+When you notice these, stop. The next section describes what to do.
+
+### Delegation as context preservation
+
+When attention degrades, delegation to a subagent isn't just for parallelism — it's for context isolation. A fresh agent with only the relevant skill loaded will follow procedure more reliably than a fatigued agent operating from degraded recall.
+
+**When to delegate:**
+
+- The task follows a multi-step skill (rebase, audit, review resolution) and you aren't confident you'll execute each step precisely
+- You're about to switch branches or topics, and the current task is self-contained
+- You've been holding concurrent state (multiple review threads, commit graphs, thread IDs) and notice shortcuts creeping in
+
+**When NOT to delegate:**
+
+- The task requires judgment from this conversation's history that the subagent won't have
+- The task is small enough that re-reading the skill section is sufficient
+- You need the result immediately and can't afford async overhead
+
+**What to give the subagent:**
+
+- The full skill content (inline in the prompt — the subagent can't read from other branches)
+- The exact files, branch, and commit range involved
+- The expected outcome and verification steps
+- Constraints from the conversation: "user wants rebased commits, not new ones," "comments must cite source permalinks," etc.
+
+**What NOT to give the subagent:**
+
+- The entire session history — that defeats the purpose of isolation
+- Vague instructions like "fix the review comments" — be specific about which comments and which commits
+
+The delegation decision is itself a self-check: if you can't clearly specify what the subagent should do, you haven't understood the task well enough to execute it yourself either. Write the delegation prompt, then decide whether to send it or just follow it yourself.
+
+### Micro-boot before multi-step operations
+
+Before starting a rebase, review resolution, branch split, or any operation that spans multiple commits or files, re-read the relevant skill section. Not from memory — from the file. This takes 30 seconds and prevents the cascading errors that come from operating on a degraded version of the procedure.
+
+This is especially important after branch switches, which clear working state.
 
 ## Before context exhaustion
 
