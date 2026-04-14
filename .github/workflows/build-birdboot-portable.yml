@@ -39,8 +39,9 @@ jobs:
     with:
       attr: nixosConfigurations.birdboot-portable.config.system.build.images.mutable
       artifact-name: mutable-x86_64-linux
-      artifact-path: result/*.img
+      artifact-path: result/*.raw
       runner: ubuntu-latest
+      sandbox: "false"
 
   immutable-x86_64:
     if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
