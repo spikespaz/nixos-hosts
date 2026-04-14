@@ -23,7 +23,13 @@
       mkBirdboot = { pkgs, modules ? [ ] }:
         nixpkgs.lib.nixosSystem {
           inherit pkgs;
-          modules = modules ++ [ ./hosts/birdboot ];
+          modules = modules ++ [
+            ./hosts/birdboot
+            {
+              system.image.version =
+                builtins.substring 0 7 (self.rev or self.dirtyRev or "unknown");
+            }
+          ];
         };
     in {
       nixosConfigurations = {

@@ -34,10 +34,11 @@
     # TODO: parameterize all bb-* labels, repart name, and LUKS
     # device name (bb-system) with a per-device UID to avoid
     # conflicts when multiple birdboot drives are connected.
-    # birdboot-sealed-<label>-<system>.raw
+    system.image.id = "${config.system.nixos.distroId}-sealed";
+
+    # ${image.id}-${label}-${system}.raw
     image.repart.name = lib.concatStringsSep "-" [
-      config.system.nixos.distroId
-      "sealed"
+      config.system.image.id
       config.system.nixos.label
       pkgs.stdenv.hostPlatform.system
     ];

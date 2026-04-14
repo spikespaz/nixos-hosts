@@ -10,25 +10,27 @@
 
     # Reserved for a future feature-set shortcode.
     # When non-empty, appears in both baseName and volumeID.
+    system.image.id = "${config.system.nixos.distroId}-ephemeral";
     isoImage.edition = "";
 
-    # ${distroId}-${edition?}-${label}-${system}.iso
+    # ${image.id}-${label}-${system}_${version}.iso
     # mkForce: iso-image.nix hardcodes "nixos" as a bare assignment (priority 100).
     # See: https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/installer/cd-dvd/iso-image.nix#L1033-L1035
-    image.baseName = lib.mkForce (lib.concatStringsSep "-" (
-      [ config.system.nixos.distroId ]
-      ++ lib.optional (config.isoImage.edition != "") config.isoImage.edition
-      ++ [ config.system.nixos.label pkgs.stdenv.hostPlatform.system ]
-    ));
+    image.baseName = lib.mkForce (lib.concatStringsSep "-" [
+      config.system.image.id
+      config.system.nixos.label
+      pkgs.stdenv.hostPlatform.system
+    ] + lib.optionalString (config.system.image.version != null)
+      "_${config.system.image.version}");
 
     # ISO 9660 volume label — used at boot by the initrd to locate
     # and mount the CD/USB device (root=LABEL=...). Max 32 characters.
-    # ${distroId}-${edition?}-${release}-${arch}
-    isoImage.volumeID = lib.concatStringsSep "-" (
-      [ config.system.nixos.distroId ]
-      ++ lib.optional (config.isoImage.edition != "") config.isoImage.edition
-      ++ [ config.system.nixos.release pkgs.stdenv.hostPlatform.uname.processor ]
-    );
+    # ${image.id}-${release}-${arch} (max 32 chars)
+    isoImage.volumeID = lib.concatStringsSep "-" [
+      config.system.image.id
+      config.system.nixos.release
+      pkgs.stdenv.hostPlatform.uname.processor
+    ];
 
     isoImage.squashfsCompression = "zstd -Xcompression-level 19";
 
