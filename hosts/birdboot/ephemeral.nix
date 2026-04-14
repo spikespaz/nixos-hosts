@@ -1,5 +1,5 @@
 { ... }: {
-  image.modules.iso-impermanent = { lib, pkgs, modulesPath, config, ... }: {
+  image.modules.ephemeral = { lib, pkgs, modulesPath, config, ... }: {
     imports = [
       # modulesPath is a config-independent argument from lib.evalModules
       # (set in nixos/lib/eval-config.nix). Using pkgs.path here would
