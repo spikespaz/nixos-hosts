@@ -2,6 +2,7 @@
   imports = [
     ./iso-impermanent.nix
     ./mutable.nix
+    ./immutable.nix
   ];
 
   system.stateVersion = "25.05";
