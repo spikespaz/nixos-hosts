@@ -24,23 +24,54 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  build-x86_64:
+  ephemeral-x86_64:
     if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
     uses: ./.github/workflows/nix-build-cached.yml
     with:
-      attr: nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
-      artifact-name: iso-impermanent-x86_64-linux
+      attr: nixosConfigurations.birdboot-portable.config.system.build.images.ephemeral
+      artifact-name: ephemeral-x86_64-linux
       artifact-path: result/iso/*.iso
       runner: ubuntu-latest
 
-  build-aarch64:
+  mutable-x86_64:
+    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
+    uses: ./.github/workflows/nix-build-cached.yml
+    with:
+      attr: nixosConfigurations.birdboot-portable.config.system.build.images.mutable
+      artifact-name: mutable-x86_64-linux
+      artifact-path: result/*.img
+      runner: ubuntu-latest
+
+  immutable-x86_64:
+    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
+    uses: ./.github/workflows/nix-build-cached.yml
+    with:
+      attr: nixosConfigurations.birdboot-portable.config.system.build.images.immutable
+      artifact-name: immutable-x86_64-linux
+      artifact-path: result/*.raw
+      runner: ubuntu-latest
+      # systemd-repart needs unprivileged user namespaces (unshare).
+      # Ubuntu 24.04 restricts via AppArmor; sandbox input triggers sysctl.
+      sandbox: "false"
+
+  sealed-x86_64:
+    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
+    uses: ./.github/workflows/nix-build-cached.yml
+    with:
+      attr: nixosConfigurations.birdboot-portable.config.system.build.images.sealed
+      artifact-name: sealed-x86_64-linux
+      artifact-path: result/*.raw
+      runner: ubuntu-latest
+      sandbox: "false"
+
+  ephemeral-aarch64:
     if: >-
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
       || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'aarch64-checks'))
     uses: ./.github/workflows/nix-build-cached.yml
     with:
-      attr: nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.iso-impermanent
-      artifact-name: iso-impermanent-aarch64-linux
+      attr: nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.ephemeral
+      artifact-name: ephemeral-aarch64-linux
       artifact-path: result/iso/*.iso
       runner: ubuntu-24.04-arm
