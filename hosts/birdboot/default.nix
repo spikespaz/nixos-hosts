@@ -1,6 +1,6 @@
 { ... }: {
   imports = [
-    ./iso-impermanent.nix
+    ./ephemeral.nix
     ./mutable.nix
     ./immutable.nix
     ./sealed.nix
