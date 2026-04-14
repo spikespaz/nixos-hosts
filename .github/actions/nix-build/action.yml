@@ -1,0 +1,81 @@
+name: Nix Build
+description: Build a nix attribute with artifact deduplication and upload
+
+inputs:
+  attr:
+    description: "Nix attribute to build"
+    required: true
+  artifact-name:
+    description: "Base name for the artifact"
+    required: true
+  artifact-path:
+    description: "Glob path to upload from result"
+    required: true
+  retention-days:
+    description: "Artifact retention in days"
+    required: false
+    default: "7"
+
+runs:
+  using: composite
+  steps:
+    - name: Compute derivation hash
+      id: drv-hash
+      shell: bash
+      run: |
+        drv_path=$(nix eval --raw '.#${{ inputs.attr }}.drvPath' 2>/dev/null || echo "unknown")
+        drv_hash=$(basename "$drv_path" | cut -d'-' -f1)
+        echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
+        echo "Cache key: drv-$drv_hash"
+
+    - name: Check for existing artifact
+      id: check-existing
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        artifact_name="${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}"
+        existing=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=$artifact_name" \
+          --jq '.artifacts[] | select(.expired == false) | .id' \
+          2>/dev/null | head -1)
+        if [ -n "$existing" ]; then
+          run_id=$(gh api "repos/${{ github.repository }}/actions/artifacts/$existing" \
+            --jq '.workflow_run.id' 2>/dev/null)
+          url="https://github.com/${{ github.repository }}/actions/runs/${run_id}/artifacts/$existing"
+          echo "Artifact '$artifact_name' already exists: $url"
+          echo "skipped=true" >> "$GITHUB_OUTPUT"
+          echo "dedup-url=$url" >> "$GITHUB_OUTPUT"
+        else
+          echo "No existing artifact for '$artifact_name'. Building."
+          echo "skipped=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: "Build ${{ inputs.artifact-name }}"
+      if: steps.check-existing.outputs.skipped != 'true'
+      shell: bash
+      run: >
+        nix build '.#${{ inputs.attr }}'
+        --out-link 'result-${{ inputs.artifact-name }}'
+        --print-build-logs
+
+    - name: Upload artifact
+      id: upload
+      if: steps.check-existing.outputs.skipped != 'true' && success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}
+        path: ${{ inputs.artifact-path }}
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: Build summary
+      if: always()
+      shell: bash
+      run: |
+        echo "### ${{ inputs.artifact-name }}" >> "$GITHUB_STEP_SUMMARY"
+        if [ "${{ steps.check-existing.outputs.skipped }}" = "true" ]; then
+          echo "Deduplicated: [${{ inputs.artifact-name }}](${{ steps.check-existing.outputs.dedup-url }})" >> "$GITHUB_STEP_SUMMARY"
+        elif [ "${{ steps.upload.outcome }}" = "success" ]; then
+          echo "Built: [${{ inputs.artifact-name }}](${{ steps.upload.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "Build failed." >> "$GITHUB_STEP_SUMMARY"
+        fi

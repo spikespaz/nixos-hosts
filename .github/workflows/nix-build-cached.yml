@@ -42,7 +42,6 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  LOCAL_CACHE: /tmp/nix-binary-cache
 
 jobs:
   build:
@@ -61,69 +60,24 @@ jobs:
         with:
           cache-name: ${{ inputs.artifact-name }}
 
-      - name: Compute derivation hash
-        id: drv-hash
-        run: |
-          drv_path=$(nix eval --raw '.#${{ inputs.attr }}.drvPath' 2>/dev/null || echo "unknown")
-          drv_hash=$(basename "$drv_path" | cut -d'-' -f1)
-          echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
-          echo "Cache key: drv-$drv_hash"
-
-      - name: Check for existing artifact
-        id: check-existing
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          artifact_name="${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}"
-          existing=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=$artifact_name" \
-            --jq '.artifacts[] | select(.expired == false) | .id' \
-            2>/dev/null | head -1)
-          if [ -n "$existing" ]; then
-            run_id=$(gh api "repos/${{ github.repository }}/actions/artifacts/$existing" \
-              --jq '.workflow_run.id' 2>/dev/null)
-            url="https://github.com/${{ github.repository }}/actions/runs/${run_id}/artifacts/$existing"
-            echo "Artifact '$artifact_name' already exists: $url"
-            echo "skipped=true" >> "$GITHUB_OUTPUT"
-            echo "dedup-url=$url" >> "$GITHUB_OUTPUT"
-          else
-            echo "No existing artifact for '$artifact_name'. Building."
-            echo "skipped=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: "Build ${{ inputs.artifact-name }}"
-        if: steps.check-existing.outputs.skipped != 'true'
-        run: >
-          nix build '.#${{ inputs.attr }}'
-          --print-build-logs
-
-      - name: Upload artifact
-        id: upload
-        if: steps.check-existing.outputs.skipped != 'true' && success()
-        uses: actions/upload-artifact@v4
+      - uses: ./.github/actions/nix-build
         with:
-          name: ${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}
-          path: ${{ inputs.artifact-path }}
+          attr: ${{ inputs.attr }}
+          artifact-name: ${{ inputs.artifact-name }}
+          artifact-path: ${{ inputs.artifact-path }}
           retention-days: ${{ inputs.retention-days }}
 
-      - name: Build summary
+      - name: Export closure to local cache
         if: always()
         run: |
-          echo "### ${{ inputs.artifact-name }}" >> "$GITHUB_STEP_SUMMARY"
-          if [ "${{ steps.check-existing.outputs.skipped }}" = "true" ]; then
-            echo "Deduplicated: [${{ inputs.artifact-name }}](${{ steps.check-existing.outputs.dedup-url }})" >> "$GITHUB_STEP_SUMMARY"
-          elif [ "${{ steps.upload.outcome }}" = "success" ]; then
-            echo "Built: [${{ inputs.artifact-name }}](${{ steps.upload.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Build failed." >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Export closure to local cache
-        if: steps.check-existing.outputs.skipped != 'true' && always()
-        run: |
-          if [ ! -L ./result ]; then exit 0; fi
+          LOCAL_CACHE="/tmp/nix-binary-cache"
           mkdir -p "$LOCAL_CACHE"
-          for path in $(nix path-info --recursive ./result 2>/dev/null | grep -v "$(readlink -f ./result)"); do
-            nix copy --to "file://$LOCAL_CACHE" "$path" 2>/dev/null || true
+          for link in result result-*; do
+            if [ ! -L "$link" ]; then continue; fi
+            for path in $(nix path-info --recursive "./$link" 2>/dev/null \
+                | grep -v "$(readlink -f "./$link")"); do
+              nix copy --to "file://$LOCAL_CACHE" "$path" 2>/dev/null || true
+            done
           done
 
           CACHE_MAX_MB=${{ inputs.cache-max-mb }}
@@ -133,7 +87,8 @@ jobs:
             if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
               echo "Pruning oldest NARs..."
               while [ "$(du -sm "$LOCAL_CACHE" | cut -f1)" -gt "$CACHE_MAX_MB" ]; do
-                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' 2>/dev/null | sort 2>/dev/null | head -1 | cut -d' ' -f2)
+                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' \
+                  2>/dev/null | sort 2>/dev/null | head -1 | cut -d' ' -f2)
                 if [ -z "$oldest" ]; then break; fi
                 rm -f "$oldest"
               done
