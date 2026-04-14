@@ -23,10 +23,11 @@
       fsType = "vfat";
     };
 
-    # birdboot-mutable-<label>-<system>.raw
+    system.image.id = "${config.system.nixos.distroId}-mutable";
+
+    # ${image.id}-${label}-${system}.raw
     image.repart.name = lib.concatStringsSep "-" [
-      config.system.nixos.distroId
-      "mutable"
+      config.system.image.id
       config.system.nixos.label
       pkgs.stdenv.hostPlatform.system
     ];

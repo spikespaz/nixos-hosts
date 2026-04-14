@@ -31,10 +31,11 @@
     # per-device UID to avoid conflicts when multiple birdboot
     # drives are connected. Affects: image.repart.name, partition
     # labels (bb-esp, bb-system, bb-persist), and fileSystems entries.
-    # birdboot-immutable-<label>-<system>.raw
+    system.image.id = "${config.system.nixos.distroId}-immutable";
+
+    # ${image.id}-${label}-${system}.raw
     image.repart.name = lib.concatStringsSep "-" [
-      config.system.nixos.distroId
-      "immutable"
+      config.system.image.id
       config.system.nixos.label
       pkgs.stdenv.hostPlatform.system
     ];
