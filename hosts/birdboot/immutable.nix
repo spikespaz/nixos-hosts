@@ -1,5 +1,5 @@
 { ... }: {
-  image.modules.immutable = { config, modulesPath, pkgs, ... }: {
+  image.modules.immutable = { lib, config, modulesPath, pkgs, ... }: {
     imports = [ (modulesPath + "/image/repart.nix") ];
 
     boot.loader.systemd-boot.enable = true;
@@ -31,7 +31,13 @@
     # per-device UID to avoid conflicts when multiple birdboot
     # drives are connected. Affects: image.repart.name, partition
     # labels (bb-esp, bb-system, bb-persist), and fileSystems entries.
-    image.repart.name = config.networking.hostName;
+    # birdboot-immutable-<label>-<system>.raw
+    image.repart.name = lib.concatStringsSep "-" [
+      config.system.nixos.distroId
+      "immutable"
+      config.system.nixos.label
+      pkgs.stdenv.hostPlatform.system
+    ];
     image.repart.partitions = {
       "bb-esp" = {
         contents = {

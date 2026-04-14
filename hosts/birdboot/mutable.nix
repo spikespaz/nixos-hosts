@@ -1,5 +1,5 @@
 { ... }: {
-  image.modules.mutable = { config, modulesPath, pkgs, ... }: {
+  image.modules.mutable = { lib, config, modulesPath, pkgs, ... }: {
     imports = [ (modulesPath + "/image/repart.nix") ];
 
     boot.loader.systemd-boot.enable = true;
@@ -23,7 +23,13 @@
       fsType = "vfat";
     };
 
-    image.repart.name = config.networking.hostName;
+    # birdboot-mutable-<label>-<system>.raw
+    image.repart.name = lib.concatStringsSep "-" [
+      config.system.nixos.distroId
+      "mutable"
+      config.system.nixos.label
+      pkgs.stdenv.hostPlatform.system
+    ];
     image.repart.partitions = {
       "bb-esp" = {
         contents = {
