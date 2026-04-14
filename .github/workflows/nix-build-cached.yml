@@ -34,6 +34,11 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      sandbox:
+        description: "Nix sandbox mode (true, false, relaxed)"
+        required: false
+        type: string
+        default: "true"
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -45,6 +50,15 @@ jobs:
     name: ${{ inputs.artifact-name }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Enable unprivileged user namespaces
+        if: inputs.sandbox == 'false'
+        run: |
+          # systemd-repart uses unshare(2) for user namespaces.
+          # Ubuntu 24.04 restricts this via AppArmor by default.
+          # https://github.com/NixOS/nixpkgs/pull/507751
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
 
       - uses: nixbuild/nix-quick-install-action@v32
         with:
@@ -75,8 +89,7 @@ jobs:
             url="https://github.com/${{ github.repository }}/actions/runs/${run_id}/artifacts/$existing"
             echo "Artifact '$artifact_name' already exists: $url"
             echo "skipped=true" >> "$GITHUB_OUTPUT"
-            echo "### Deduplicated" >> "$GITHUB_STEP_SUMMARY"
-            echo "Existing artifact: [$artifact_name]($url)" >> "$GITHUB_STEP_SUMMARY"
+            echo "dedup-url=$url" >> "$GITHUB_OUTPUT"
           else
             echo "No existing artifact for '$artifact_name'. Building."
             echo "skipped=false" >> "$GITHUB_OUTPUT"
@@ -108,12 +121,25 @@ jobs:
           --print-build-logs
 
       - name: Upload artifact
+        id: upload
         if: steps.check-existing.outputs.skipped != 'true' && success()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}
           path: ${{ inputs.artifact-path }}
           retention-days: ${{ inputs.retention-days }}
+
+      - name: Build summary
+        if: always()
+        run: |
+          echo "### ${{ inputs.artifact-name }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.check-existing.outputs.skipped }}" = "true" ]; then
+            echo "Deduplicated: [${{ inputs.artifact-name }}](${{ steps.check-existing.outputs.dedup-url }})" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "${{ steps.upload.outcome }}" = "success" ]; then
+            echo "Built: [${{ inputs.artifact-name }}](${{ steps.upload.outputs.artifact-url }})" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Build failed." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Export closure to local cache
         if: steps.check-existing.outputs.skipped != 'true' && always()
@@ -131,7 +157,7 @@ jobs:
             if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
               echo "Pruning oldest NARs..."
               while [ "$(du -sm "$LOCAL_CACHE" | cut -f1)" -gt "$CACHE_MAX_MB" ]; do
-                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' 2>/dev/null | sort | head -1 | cut -d' ' -f2)
+                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' 2>/dev/null | sort 2>/dev/null | head -1 | cut -d' ' -f2)
                 if [ -z "$oldest" ]; then break; fi
                 rm -f "$oldest"
               done
