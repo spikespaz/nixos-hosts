@@ -13,7 +13,7 @@
     };
     fileSystems."/nix/store" = {
       device = "/dev/disk/by-partlabel/bb-system";
-      fsType = "squashfs";
+      fsType = "erofs";
     };
     fileSystems."/boot" = {
       device = "/dev/disk/by-partlabel/bb-esp";
@@ -42,7 +42,7 @@
         storePaths = [ config.system.build.toplevel ];
         repartConfig = {
           Type = "linux-generic";
-          Format = "squashfs";
+          Format = "erofs";
           Minimize = "guess";
           Label = "bb-system";
         };
