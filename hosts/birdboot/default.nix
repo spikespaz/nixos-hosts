@@ -3,6 +3,7 @@
     ./iso-impermanent.nix
     ./mutable.nix
     ./immutable.nix
+    ./sealed.nix
   ];
 
   system.stateVersion = "25.05";
