@@ -1,5 +1,5 @@
 { ... }: {
-  image.modules.sealed = { config, modulesPath, pkgs, ... }: {
+  image.modules.sealed = { lib, config, modulesPath, pkgs, ... }: {
     imports = [ (modulesPath + "/image/repart.nix") ];
 
     boot.loader.systemd-boot.enable = true;
@@ -34,7 +34,13 @@
     # TODO: parameterize all bb-* labels, repart name, and LUKS
     # device name (bb-system) with a per-device UID to avoid
     # conflicts when multiple birdboot drives are connected.
-    image.repart.name = "${config.networking.hostName}-sealed";
+    # birdboot-sealed-<label>-<system>.raw
+    image.repart.name = lib.concatStringsSep "-" [
+      config.system.nixos.distroId
+      "sealed"
+      config.system.nixos.label
+      pkgs.stdenv.hostPlatform.system
+    ];
     image.repart.partitions = {
       "bb-esp" = {
         contents = {
