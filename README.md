@@ -2,30 +2,66 @@
 
 NixOS system configurations for personal machines and portable recovery media.
 
-Hosts include a WSL development environment and a bootable USB recovery image with Secure Boot support, encrypted persistent storage, and a read-only system partition.
+Hosts include a WSL development environment and a bootable USB recovery image with encrypted persistent storage and a read-only system partition.
 
-## birdboot-portable
+## birdboot
 
-Bootable recovery USB image. Read-only NixOS system with encrypted persistent storage on a second partition.
+Portable recovery image. Read-only NixOS system with encrypted persistent storage on a separate partition.
 
-### Image Variants
+### Image variants
 
 | Variant | Description |
 |---|---|
-| `iso-impermanent` | Ephemeral live ISO, no persistent state |
+| `ephemeral` | Live ISO, no persistent state (squashfs + tmpfs overlay) |
+| `mutable` | Writable GPT + ext4, growable after flash |
+| `immutable` | Read-only erofs system + persist partition |
+| `sealed` | Encrypted erofs system (LUKS) + persist partition |
 
 ### Building
 
 All variants are built from the `birdboot-portable` NixOS configuration:
 
 ```
-nix build .#nixosConfigurations.birdboot-portable.config.system.build.images.iso-impermanent
+nix build .#nixosConfigurations.birdboot-portable.config.system.build.images.<variant>
 ```
+
+### Flashing
+
+**ISO (ephemeral):** Write with `dd` or Rufus DD mode:
+
+```
+sudo dd if=result/iso/*.iso of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+**GPT variants (mutable, immutable, sealed):** Write raw image:
+
+```
+sudo dd if=result/*.raw of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+After flashing `immutable`, the USB drive has:
+
+```
+/dev/sdX
+├── /dev/sdX1  bb-esp     (FAT32, 768M)       EFI bootloader
+├── /dev/sdX2  bb-system  (erofs, ~var)        Nix store, system closure (read-only)
+└── /dev/sdX3  bb-persist (unformatted, 1G+)   Persistent storage (provisioned at first boot)
+```
+
+The `sealed` variant wraps the system partition in LUKS.
+
+### LUKS key provisioning (sealed variant)
+
+The sealed image uses `Encrypt = "key-file"` in systemd-repart, which generates a random encryption key at build time. This key is not stored in the output image.
+
+After flashing, the LUKS volume must be re-keyed:
+
+```
+sudo cryptsetup luksAddKey /dev/sdX2 --master-key-file <build-key>
+```
+
+First-boot provisioning automation is planned.
 
 ### CI
 
-Image builds are verified by GitHub Actions on every PR and push to master. Native x86_64 builds use Hydra binary cache substitution.
-
-Planned improvements:
-- aarch64 builds via binfmt emulation on x86_64 runners (Hydra-cached, no ARM runner cost)
-- Nix store caching between workflow runs to reduce redundant fetches
+Image builds verified by GitHub Actions on every PR and push to master. Artifact deduplication by derivation hash avoids redundant builds.
