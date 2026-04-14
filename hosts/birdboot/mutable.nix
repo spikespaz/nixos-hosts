@@ -6,9 +6,17 @@
     boot.loader.efi.canTouchEfiVariables = false;
     boot.loader.grub.enable = false;
 
+    # Grow bb-root to fill available space on first boot.
+    systemd.repart.enable = true;
+    systemd.repart.partitions."bb-root" = {
+      Type = "root";
+      Label = "bb-root";
+    };
+
     fileSystems."/" = {
       device = "/dev/disk/by-partlabel/bb-root";
       fsType = "ext4";
+      autoResize = true;
     };
     fileSystems."/boot" = {
       device = "/dev/disk/by-partlabel/bb-esp";
@@ -36,8 +44,6 @@
           Format = "ext4";
           Minimize = "guess";
           Label = "bb-root";
-          # Grows to fill available space at first boot via
-          # boot.initrd.systemd.repart or systemd-growfs.
         };
       };
     };

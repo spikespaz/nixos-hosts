@@ -6,6 +6,13 @@
     boot.loader.efi.canTouchEfiVariables = false;
     boot.loader.grub.enable = false;
 
+    # Grow bb-persist to fill available space on first boot.
+    systemd.repart.enable = true;
+    systemd.repart.partitions."bb-persist" = {
+      Type = "linux-generic";
+      Label = "bb-persist";
+    };
+
     fileSystems."/" = {
       device = "tmpfs";
       fsType = "tmpfs";
