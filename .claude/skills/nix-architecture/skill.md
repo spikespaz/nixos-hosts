@@ -78,9 +78,9 @@ Earlier iterations passed the nixpkgs source path via `specialArgs`. This was re
 ## Image variant system: image.modules
 
 ```nix
-# hosts/birdboot/portable-iso-impermanent.nix
+# hosts/birdboot/ephemeral.nix
 { ... }: {
-  image.modules.iso-impermanent = { modulesPath, ... }: {
+  image.modules.ephemeral = { modulesPath, ... }: {
     imports = [ (modulesPath + "/installer/cd-dvd/iso-image.nix") ];
     isoImage.squashfsCompression = "zstd -Xcompression-level 19";
   };
@@ -108,10 +108,10 @@ Each variant lives in its own file under `hosts/<host>/`:
 ```
 hosts/birdboot/
 ├── default.nix                      # shared config (stateVersion, hostName, nix settings)
-├── portable-iso-impermanent.nix     # ephemeral live ISO
-├── portable-gpt-ext4.nix           # basic GPT + ext4
-├── portable-gpt-squashfs.nix       # read-only squashfs with repart
-└── portable-gpt-squashfs-sealed.nix # LUKS-encrypted squashfs
+├── ephemeral.nix               # live ISO (squashfs+tmpfs, no persistence)
+├── mutable.nix                 # writable GPT + ext4
+├── immutable.nix               # read-only erofs with repart
+└── sealed.nix                  # encrypted erofs with repart + LUKS
 ```
 
 `default.nix` imports variant files. This separation means:
@@ -144,7 +144,7 @@ packages = lib.mapAttrs (buildSystem: pkgs:
 
 ### Why packages, not just nixosConfigurations?
 
-`nix build .#packages.aarch64-linux.birdboot-images-x86_64-linux.iso-impermanent` works from an aarch64 machine. The `packages` output maps build platforms to their available targets, making CI matrix entries straightforward — each runner builds with its native `packages.<system>`.
+`nix build .#packages.aarch64-linux.birdboot-images-x86_64-linux.ephemeral` works from an aarch64 machine. The `packages` output maps build platforms to their available targets, making CI matrix entries straightforward — each runner builds with its native `packages.<system>`.
 
 ## Patterns to follow when adding hosts
 
