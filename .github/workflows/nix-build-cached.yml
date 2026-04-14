@@ -54,17 +54,12 @@ jobs:
       - name: Enable unprivileged user namespaces
         if: inputs.sandbox == 'false'
         run: |
-          # systemd-repart uses unshare(2) for user namespaces.
-          # Ubuntu 24.04 restricts this via AppArmor by default.
-          # https://github.com/NixOS/nixpkgs/pull/507751
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
           sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
 
-      - uses: nixbuild/nix-quick-install-action@v32
+      - uses: ./.github/actions/nix-setup
         with:
-          nix_conf: |
-            pure-eval = true
-            allow-import-from-derivation = false
+          cache-name: ${{ inputs.artifact-name }}
 
       - name: Compute derivation hash
         id: drv-hash
@@ -93,25 +88,6 @@ jobs:
           else
             echo "No existing artifact for '$artifact_name'. Building."
             echo "skipped=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Restore local binary cache
-        if: steps.check-existing.outputs.skipped != 'true'
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.LOCAL_CACHE }}
-          key: nix-${{ inputs.artifact-name }}-drv-${{ steps.drv-hash.outputs.hash }}
-          restore-keys: |
-            nix-${{ inputs.artifact-name }}-drv-
-
-      - name: Import from local cache
-        if: steps.check-existing.outputs.skipped != 'true'
-        run: |
-          if [ -f "$LOCAL_CACHE/nix-cache-info" ]; then
-            echo "Importing from local binary cache..."
-            nix copy --from "file://$LOCAL_CACHE" --all --no-check-sigs 2>/dev/null || true
-          else
-            echo "No local cache found, building from scratch."
           fi
 
       - name: "Build ${{ inputs.artifact-name }}"
