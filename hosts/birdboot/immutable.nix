@@ -20,7 +20,7 @@
       fsType = "vfat";
     };
 
-    image.repart.name = "birdboot-portable";
+    image.repart.name = config.networking.hostName;
     image.repart.partitions = {
       "10-esp" = {
         contents = {
