@@ -1,5 +1,8 @@
 { ... }: {
-  imports = [ ./iso-impermanent.nix ];
+  imports = [
+    ./iso-impermanent.nix
+    ./mutable.nix
+  ];
 
   system.stateVersion = "25.05";
 
