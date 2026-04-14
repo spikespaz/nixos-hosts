@@ -7,6 +7,7 @@ on:
       - "flake.nix"
       - "flake.lock"
       - "hosts/birdboot/**"
+      - ".github/actions/**"
       - ".github/workflows/build-birdboot-portable.yml"
       - ".github/workflows/nix-build-cached.yml"
   push:
@@ -16,6 +17,7 @@ on:
       - "flake.nix"
       - "flake.lock"
       - "hosts/birdboot/**"
+      - ".github/actions/**"
       - ".github/workflows/build-birdboot-portable.yml"
       - ".github/workflows/nix-build-cached.yml"
   workflow_dispatch:

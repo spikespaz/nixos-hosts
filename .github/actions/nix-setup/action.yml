@@ -1,0 +1,33 @@
+name: Nix Setup
+description: Install Nix, restore and import local binary cache
+
+inputs:
+  cache-name:
+    description: "Cache key prefix for actions/cache"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: nixbuild/nix-quick-install-action@v32
+      with:
+        nix_conf: |
+          pure-eval = true
+          allow-import-from-derivation = false
+
+    - uses: actions/cache@v4
+      with:
+        path: /tmp/nix-binary-cache
+        key: nix-${{ inputs.cache-name }}-${{ github.sha }}
+        restore-keys: |
+          nix-${{ inputs.cache-name }}-
+
+    - name: Import from local cache
+      shell: bash
+      run: |
+        if [ -f "/tmp/nix-binary-cache/nix-cache-info" ]; then
+          echo "Importing from local binary cache..."
+          nix copy --from "file:///tmp/nix-binary-cache" --all --no-check-sigs 2>/dev/null || true
+        else
+          echo "No local cache found."
+        fi
