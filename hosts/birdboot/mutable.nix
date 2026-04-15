@@ -42,6 +42,10 @@
               "${pkgs.systemd}/lib/systemd/boot/efi/systemd-boot${efiArch}.efi";
             "/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
               "${config.system.build.uki}/${config.system.boot.loader.ukiFile}";
+            "/loader/loader.conf".source = pkgs.writeText "loader.conf" ''
+              timeout 5
+              default @saved
+            '';
           };
         repartConfig = {
           Type = "esp";
@@ -52,6 +56,9 @@
       };
       "bb-root" = {
         storePaths = [ config.system.build.toplevel ];
+        contents = {
+          "/nix/var/nix/profiles/system".source = config.system.build.toplevel;
+        };
         repartConfig = {
           Type = "root";
           Format = "ext4";
