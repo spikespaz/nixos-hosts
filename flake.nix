@@ -26,10 +26,11 @@
           inherit pkgs;
           modules = modules ++ [
             ./hosts/birdboot
-          ] ++ lib.optional setImageVersion {
-            system.image.version =
-              builtins.substring 0 7 (self.rev or self.dirtyRev or "unknown");
-          };
+            {
+              system.image.version = lib.mkIf setImageVersion
+                (builtins.substring 0 7 (self.rev or self.dirtyRev or "unknown"));
+            }
+          ];
         };
     in {
       nixosConfigurations = {
