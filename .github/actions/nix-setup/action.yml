@@ -5,6 +5,10 @@ inputs:
   cache-name:
     description: "Cache key prefix for actions/cache"
     required: true
+  nix-conf:
+    description: "Extra nix.conf lines (appended to defaults)"
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -14,6 +18,7 @@ runs:
         nix_conf: |
           pure-eval = true
           allow-import-from-derivation = false
+          ${{ inputs.nix-conf }}
 
     - uses: actions/cache@v4
       with:
