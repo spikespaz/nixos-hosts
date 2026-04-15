@@ -55,6 +55,15 @@
           SizeMaxBytes = "512M";
         };
       };
+      # System partition is erofs inside LUKS. systemd-repart creates
+      # the LUKS container with a random key-file at build time.
+      # The build-time key is NOT stored in the output image.
+      #
+      # After flashing to USB, the LUKS volume must be re-keyed:
+      #   sudo cryptsetup luksFormat /dev/sdX2
+      #
+      # At boot, the initrd prompts for the LUKS passphrase via
+      # boot.initrd.luks.devices."bb-system" (defined above).
       "bb-system" = {
         storePaths = [ config.system.build.toplevel ];
         repartConfig = {
