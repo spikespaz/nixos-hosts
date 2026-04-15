@@ -24,7 +24,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  bb-portable-x86_64:
+  brd-portable-x86_64:
     if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -81,7 +81,7 @@ jobs:
         with:
           cache-max-mb: "2048"
 
-  bb-portable-aarch64:
+  brd-portable-aarch64:
     if: >-
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
