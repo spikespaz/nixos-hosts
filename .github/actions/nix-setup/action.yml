@@ -34,10 +34,10 @@ runs:
         if [ -f "/tmp/nix-binary-cache/nix-cache-info" ]; then
           echo "Importing from local binary cache..."
           nix copy --from "file:///tmp/nix-binary-cache" --all --no-check-sigs 2>/dev/null || true
-          echo "### Nix Setup" >> "$GITHUB_STEP_SUMMARY"
-          echo "Binary cache restored." >> "$GITHUB_STEP_SUMMARY"
+          echo "### Binary cache" >> "$GITHUB_STEP_SUMMARY"
+          echo "Restored from \`nix-${{ inputs.cache-name }}\`." >> "$GITHUB_STEP_SUMMARY"
         else
           echo "No local cache found."
-          echo "### Nix Setup" >> "$GITHUB_STEP_SUMMARY"
-          echo "No binary cache (cold start)." >> "$GITHUB_STEP_SUMMARY"
+          echo "### Binary cache" >> "$GITHUB_STEP_SUMMARY"
+          echo "Cold start — no prior cache for \`nix-${{ inputs.cache-name }}\`." >> "$GITHUB_STEP_SUMMARY"
         fi
