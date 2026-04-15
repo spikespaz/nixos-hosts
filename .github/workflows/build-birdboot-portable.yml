@@ -9,7 +9,6 @@ on:
       - "hosts/birdboot/**"
       - ".github/actions/**"
       - ".github/workflows/build-birdboot-portable.yml"
-      - ".github/workflows/nix-build-cached.yml"
   push:
     branches: [master]
     tags: ["v*"]
@@ -19,62 +18,84 @@ on:
       - "hosts/birdboot/**"
       - ".github/actions/**"
       - ".github/workflows/build-birdboot-portable.yml"
-      - ".github/workflows/nix-build-cached.yml"
   workflow_dispatch:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  ephemeral-x86_64:
+  x86_64:
     if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
-    uses: ./.github/workflows/nix-build-cached.yml
-    with:
-      attr: nixosConfigurations.birdboot-portable.config.system.build.images.ephemeral
-      artifact-name: ephemeral-x86_64-linux
-      artifact-path: result/iso/*.iso
-      runner: ubuntu-latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-  mutable-x86_64:
-    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
-    uses: ./.github/workflows/nix-build-cached.yml
-    with:
-      attr: nixosConfigurations.birdboot-portable.config.system.build.images.mutable
-      artifact-name: mutable-x86_64-linux
-      artifact-path: result/*.raw
-      runner: ubuntu-latest
-      sandbox: "false"
+      # systemd-repart (used by mutable, immutable, sealed variants)
+      # calls unshare(2) to create user namespaces for fakeroot.
+      # Ubuntu 24.04 restricts this via AppArmor by default.
+      # Without this sysctl, repart builds fail with:
+      #   unshare: write failed /proc/self/uid_map: Operation not permitted
+      - name: Enable unprivileged user namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
 
-  immutable-x86_64:
-    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
-    uses: ./.github/workflows/nix-build-cached.yml
-    with:
-      attr: nixosConfigurations.birdboot-portable.config.system.build.images.immutable
-      artifact-name: immutable-x86_64-linux
-      artifact-path: result/*.raw
-      runner: ubuntu-latest
-      # systemd-repart needs unprivileged user namespaces (unshare).
-      # Ubuntu 24.04 restricts via AppArmor; sandbox input triggers sysctl.
-      sandbox: "false"
+      - uses: ./.github/actions/nix-setup
+        with:
+          cache-name: birdboot-x86_64
 
-  sealed-x86_64:
-    if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
-    uses: ./.github/workflows/nix-build-cached.yml
-    with:
-      attr: nixosConfigurations.birdboot-portable.config.system.build.images.sealed
-      artifact-name: sealed-x86_64-linux
-      artifact-path: result/*.raw
-      runner: ubuntu-latest
-      sandbox: "false"
+      - uses: ./.github/actions/nix-build
+        with:
+          attr: nixosConfigurations.birdboot-portable.config.system.build.images.ephemeral
+          artifact-name: ephemeral-x86_64-linux
+          artifact-path: result-ephemeral-x86_64-linux/iso/*.iso
 
-  ephemeral-aarch64:
+      - uses: ./.github/actions/nix-build
+        with:
+          attr: nixosConfigurations.birdboot-portable.config.system.build.images.mutable
+          artifact-name: mutable-x86_64-linux
+          artifact-path: result-mutable-x86_64-linux/*.raw
+
+      - uses: ./.github/actions/nix-build
+        with:
+          attr: nixosConfigurations.birdboot-portable.config.system.build.images.immutable
+          artifact-name: immutable-x86_64-linux
+          artifact-path: result-immutable-x86_64-linux/*.raw
+
+      - uses: ./.github/actions/nix-build
+        with:
+          attr: nixosConfigurations.birdboot-portable.config.system.build.images.sealed
+          artifact-name: sealed-x86_64-linux
+          artifact-path: result-sealed-x86_64-linux/*.raw
+
+      # Export all build closures (excluding the images themselves) to
+      # a local binary cache for the next run. Budget: 2GB covers the
+      # shared dependency closure across all four variants.
+      - uses: ./.github/actions/nix-cache-export
+        if: always()
+        with:
+          cache-max-mb: "2048"
+
+  aarch64:
     if: >-
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
       || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'aarch64-checks'))
-    uses: ./.github/workflows/nix-build-cached.yml
-    with:
-      attr: nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.ephemeral
-      artifact-name: ephemeral-aarch64-linux
-      artifact-path: result/iso/*.iso
-      runner: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/nix-setup
+        with:
+          cache-name: birdboot-aarch64
+
+      - uses: ./.github/actions/nix-build
+        with:
+          attr: nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.ephemeral
+          artifact-name: ephemeral-aarch64-linux
+          artifact-path: result-ephemeral-aarch64-linux/iso/*.iso
+
+      - uses: ./.github/actions/nix-cache-export
+        if: always()
+        with:
+          cache-max-mb: "2048"
