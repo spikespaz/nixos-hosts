@@ -27,17 +27,24 @@ nix build .#nixosConfigurations.birdboot-portable.config.system.build.images.<va
 
 ### Flashing
 
-**ISO (ephemeral):** Write with `dd` or Rufus DD mode:
+**Ephemeral (ISO):**
 
 ```
 sudo dd if=result/iso/*.iso of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
-**GPT variants (mutable, immutable, sealed):** Write raw image:
+On Windows, [Rufus](https://rufus.ie) detects the hybrid ISO and offers
+DD mode — select it.
+
+**GPT variants (mutable, immutable, sealed):**
 
 ```
 sudo dd if=result/*.raw of=/dev/sdX bs=4M status=progress conv=fsync
 ```
+
+On Windows, Rufus does not detect raw images automatically. Select
+"All files (\*.\*)" in the file picker to see `.raw` and `.img` files,
+then flash in DD mode (the only option for raw images).
 
 After flashing `immutable`, the USB drive has:
 
