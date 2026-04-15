@@ -1,13 +1,10 @@
 { ... }: {
-  image.modules.mutable = { lib, config, modulesPath, pkgs, ... }: {
-    imports = [ (modulesPath + "/image/repart.nix") ];
+  image.modules.mutable = { config, ... }: {
+    imports = [ ./portable-media-base.nix ];
 
-    boot.loader.systemd-boot.enable = true;
-    boot.loader.efi.canTouchEfiVariables = false;
-    boot.loader.grub.enable = false;
+    system.image.id = "${config.system.nixos.distroId}-mutable";
 
     # Grow bb-root to fill available space on first boot.
-    systemd.repart.enable = true;
     systemd.repart.partitions."bb-root" = {
       Type = "root";
       Label = "bb-root";
@@ -18,54 +15,17 @@
       fsType = "ext4";
       autoResize = true;
     };
-    fileSystems."/boot" = {
-      device = "/dev/disk/by-partlabel/bb-esp";
-      fsType = "vfat";
-    };
 
-    system.image.id = "${config.system.nixos.distroId}-mutable";
-
-    # ${image.id}-${label}-${system}.raw
-    image.repart.name = lib.concatStringsSep "-" [
-      config.system.image.id
-      config.system.nixos.label
-      pkgs.stdenv.hostPlatform.system
-    ];
-    image.repart.partitions = {
-      "bb-esp" = {
-        contents =
-          let
-            efiArch = pkgs.stdenv.hostPlatform.efiArch;
-            ukiFile = config.system.boot.loader.ukiFile;
-          in
-          {
-            "/EFI/BOOT/BOOT${lib.toUpper efiArch}.EFI".source =
-              "${pkgs.systemd}/lib/systemd/boot/efi/systemd-boot${efiArch}.efi";
-            "/EFI/Linux/${ukiFile}".source =
-              "${config.system.build.uki}/${ukiFile}";
-            "/loader/loader.conf".source = pkgs.writeText "loader.conf" ''
-              timeout 5
-              default @saved
-            '';
-          };
-        repartConfig = {
-          Type = "esp";
-          Format = "vfat";
-          SizeMinBytes = "768M";
-          SizeMaxBytes = "768M";
-        };
+    image.repart.partitions."bb-root" = {
+      storePaths = [ config.system.build.toplevel ];
+      contents = {
+        "/nix/var/nix/profiles/system".source = config.system.build.toplevel;
       };
-      "bb-root" = {
-        storePaths = [ config.system.build.toplevel ];
-        contents = {
-          "/nix/var/nix/profiles/system".source = config.system.build.toplevel;
-        };
-        repartConfig = {
-          Type = "root";
-          Format = "ext4";
-          Minimize = "guess";
-          Label = "bb-root";
-        };
+      repartConfig = {
+        Type = "root";
+        Format = "ext4";
+        Minimize = "guess";
+        Label = "bb-root";
       };
     };
   };
