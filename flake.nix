@@ -20,16 +20,16 @@
         };
       # Caller modules are ordered before host defaults so callers can
       # use mkOrder and mkOverride to override without fighting evaluation order.
+      setImageVersion = false;
       mkBirdboot = { pkgs, modules ? [ ] }:
         nixpkgs.lib.nixosSystem {
           inherit pkgs;
           modules = modules ++ [
             ./hosts/birdboot
-            {
-              system.image.version =
-                builtins.substring 0 7 (self.rev or self.dirtyRev or "unknown");
-            }
-          ];
+          ] ++ lib.optional setImageVersion {
+            system.image.version =
+              builtins.substring 0 7 (self.rev or self.dirtyRev or "unknown");
+          };
         };
     in {
       nixosConfigurations = {
