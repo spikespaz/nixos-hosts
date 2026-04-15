@@ -67,37 +67,7 @@ jobs:
           artifact-path: ${{ inputs.artifact-path }}
           retention-days: ${{ inputs.retention-days }}
 
-      - name: Export closure to local cache
+      - uses: ./.github/actions/nix-cache-export
         if: always()
-        run: |
-          LOCAL_CACHE="/tmp/nix-binary-cache"
-          mkdir -p "$LOCAL_CACHE"
-          for link in result result-*; do
-            if [ ! -L "$link" ]; then continue; fi
-            for path in $(nix path-info --recursive "./$link" 2>/dev/null \
-                | grep -v "$(readlink -f "./$link")"); do
-              nix copy --to "file://$LOCAL_CACHE" "$path" 2>/dev/null || true
-            done
-          done
-
-          CACHE_MAX_MB=${{ inputs.cache-max-mb }}
-          if [ "$CACHE_MAX_MB" -gt 0 ] 2>/dev/null; then
-            cache_mb=$(du -sm "$LOCAL_CACHE" | cut -f1)
-            echo "Cache size: ${cache_mb}MB (budget: ${CACHE_MAX_MB}MB)"
-            if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
-              echo "Pruning oldest NARs..."
-              while [ "$(du -sm "$LOCAL_CACHE" | cut -f1)" -gt "$CACHE_MAX_MB" ]; do
-                oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' \
-                  2>/dev/null | sort 2>/dev/null | head -1 | cut -d' ' -f2)
-                if [ -z "$oldest" ]; then break; fi
-                rm -f "$oldest"
-              done
-              for ni in "$LOCAL_CACHE"/*.narinfo; do
-                nar_url=$(grep "^URL:" "$ni" 2>/dev/null | sed 's|^URL: ||')
-                if [ -n "$nar_url" ] && [ ! -f "$LOCAL_CACHE/$nar_url" ]; then
-                  rm -f "$ni"
-                fi
-              done
-              echo "Cache after pruning: $(du -sm "$LOCAL_CACHE" | cut -f1)MB"
-            fi
-          fi
+        with:
+          cache-max-mb: ${{ inputs.cache-max-mb }}
