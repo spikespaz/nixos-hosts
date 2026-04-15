@@ -24,7 +24,7 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  x86_64:
+  bb-portable-x86_64:
     if: github.event.pull_request.draft != true || github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -44,25 +44,29 @@ jobs:
         with:
           cache-name: birdboot-x86_64
 
-      - uses: ./.github/actions/nix-build
+      - name: ephemeral-x86_64-linux
+        uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.birdboot-portable.config.system.build.images.ephemeral
           artifact-name: ephemeral-x86_64-linux
           artifact-path: result-ephemeral-x86_64-linux/iso/*.iso
 
-      - uses: ./.github/actions/nix-build
+      - name: mutable-x86_64-linux
+        uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.birdboot-portable.config.system.build.images.mutable
           artifact-name: mutable-x86_64-linux
           artifact-path: result-mutable-x86_64-linux/*.raw
 
-      - uses: ./.github/actions/nix-build
+      - name: immutable-x86_64-linux
+        uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.birdboot-portable.config.system.build.images.immutable
           artifact-name: immutable-x86_64-linux
           artifact-path: result-immutable-x86_64-linux/*.raw
 
-      - uses: ./.github/actions/nix-build
+      - name: sealed-x86_64-linux
+        uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.birdboot-portable.config.system.build.images.sealed
           artifact-name: sealed-x86_64-linux
@@ -71,12 +75,13 @@ jobs:
       # Export all build closures (excluding the images themselves) to
       # a local binary cache for the next run. Budget: 2GB covers the
       # shared dependency closure across all four variants.
-      - uses: ./.github/actions/nix-cache-export
+      - name: Export binary cache
+        uses: ./.github/actions/nix-cache-export
         if: always()
         with:
           cache-max-mb: "2048"
 
-  aarch64:
+  bb-portable-aarch64:
     if: >-
       github.event_name == 'workflow_dispatch'
       || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/'))
@@ -89,7 +94,8 @@ jobs:
         with:
           cache-name: birdboot-aarch64
 
-      - uses: ./.github/actions/nix-build
+      - name: ephemeral-aarch64-linux
+        uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.ephemeral
           artifact-name: ephemeral-aarch64-linux
