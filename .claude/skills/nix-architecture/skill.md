@@ -107,11 +107,12 @@ Each variant lives in its own file under `hosts/<host>/`:
 
 ```
 hosts/birdboot/
-├── default.nix                      # shared config (stateVersion, hostName, nix settings)
-├── ephemeral.nix               # live ISO (squashfs+tmpfs, no persistence)
-├── mutable.nix                 # writable GPT + ext4
-├── immutable.nix               # read-only erofs with repart
-└── sealed.nix                  # encrypted erofs with repart + LUKS
+├── default.nix              # system identity, hardware, nix settings
+├── portable-media-base.nix  # shared repart: bootloader, ESP, UKI, naming
+├── ephemeral.nix            # live ISO (squashfs+tmpfs, no persistence)
+├── mutable.nix              # writable ext4 root (imports portable-media-base)
+├── immutable.nix            # read-only erofs root (imports portable-media-base)
+└── sealed.nix               # encrypted erofs root (imports portable-media-base)
 ```
 
 `default.nix` imports variant files. This separation means:
