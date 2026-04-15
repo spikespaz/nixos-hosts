@@ -47,12 +47,13 @@
         contents =
           let
             efiArch = pkgs.stdenv.hostPlatform.efiArch;
+            ukiFile = config.system.boot.loader.ukiFile;
           in
           {
             "/EFI/BOOT/BOOT${lib.toUpper efiArch}.EFI".source =
               "${pkgs.systemd}/lib/systemd/boot/efi/systemd-boot${efiArch}.efi";
-            "/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
-              "${config.system.build.uki}/${config.system.boot.loader.ukiFile}";
+            "/EFI/Linux/${ukiFile}".source =
+              "${config.system.build.uki}/${ukiFile}";
             "/loader/loader.conf".source = pkgs.writeText "loader.conf" ''
               timeout 5
               default @saved
