@@ -38,12 +38,12 @@ pkgsCrossFor = localSystem: crossSystem:
 
 **Parameter naming:** `localSystem` and `crossSystem` mirror the nixpkgs `import` parameters they wire into. Earlier iterations used `buildSystem`/`hostSystem` — renamed for directness.
 
-## Host factories: mkBirdboot
+## Host factories: mkBrdboot
 
 ```nix
-mkBirdboot = { pkgs, modules ? [ ] }: nixpkgs.lib.nixosSystem {
+mkBrdboot = { pkgs, modules ? [ ] }: nixpkgs.lib.nixosSystem {
   inherit pkgs;
-  modules = modules ++ [ ./hosts/birdboot ];
+  modules = modules ++ [ ./hosts/brdboot ];
 };
 ```
 
@@ -58,7 +58,7 @@ The factory takes `pkgs` (an already-imported nixpkgs instance) rather than a `s
 ### Module ordering: caller before host
 
 ```nix
-modules = modules ++ [ ./hosts/birdboot ];
+modules = modules ++ [ ./hosts/brdboot ];
 ```
 
 Caller-provided modules are ordered **before** the host's default modules. This is deliberate:
@@ -78,7 +78,7 @@ Earlier iterations passed the nixpkgs source path via `specialArgs`. This was re
 ## Image variant system: image.modules
 
 ```nix
-# hosts/birdboot/ephemeral.nix
+# hosts/brdboot/ephemeral.nix
 { ... }: {
   image.modules.ephemeral = { modulesPath, ... }: {
     imports = [ (modulesPath + "/installer/cd-dvd/iso-image.nix") ];
@@ -106,7 +106,7 @@ Imports inside deferred modules **must not** reference `pkgs`. In `imports = [..
 Each variant lives in its own file under `hosts/<host>/`:
 
 ```
-hosts/birdboot/
+hosts/brdboot/
 ├── default.nix              # system identity, hardware, nix settings
 ├── portable-media-base.nix  # shared repart: bootloader, ESP, UKI, naming
 ├── ephemeral.nix            # live ISO (squashfs+tmpfs, no persistence)
@@ -128,24 +128,24 @@ packages = lib.mapAttrs (buildSystem: pkgs:
   let
     hostSystem = "x86_64-linux";
     isCross = buildSystem != hostSystem;
-    name = "birdboot-images"
+    name = "brdboot-images"
       + lib.optionalString isCross "-${hostSystem}";
     images = if isCross then
       let pkgs = pkgsCrossFor buildSystem hostSystem;
-      in (mkBirdboot { inherit pkgs; }).config.system.build.images
+      in (mkBrdboot { inherit pkgs; }).config.system.build.images
     else
-      self.nixosConfigurations.birdboot-portable.config.system.build.images;
+      self.nixosConfigurations.brdboot.config.system.build.images;
   in { ${name} = images; }) pkgsFor;
 ```
 
 ### Native vs cross
 
-- **Native** (`buildSystem == hostSystem`): references `self.nixosConfigurations.birdboot-portable` directly — no redundant evaluation
-- **Cross** (`buildSystem != hostSystem`): creates a fresh `mkBirdboot` with cross-compiled `pkgs`, suffixed with `-${hostSystem}` to distinguish from the native package
+- **Native** (`buildSystem == hostSystem`): references `self.nixosConfigurations.brdboot` directly — no redundant evaluation
+- **Cross** (`buildSystem != hostSystem`): creates a fresh `mkBrdboot` with cross-compiled `pkgs`, suffixed with `-${hostSystem}` to distinguish from the native package
 
 ### Why packages, not just nixosConfigurations?
 
-`nix build .#packages.aarch64-linux.birdboot-images-x86_64-linux.ephemeral` works from an aarch64 machine. The `packages` output maps build platforms to their available targets, making CI matrix entries straightforward — each runner builds with its native `packages.<system>`.
+`nix build .#packages.aarch64-linux.brdboot-images-x86_64-linux.ephemeral` works from an aarch64 machine. The `packages` output maps build platforms to their available targets, making CI matrix entries straightforward — each runner builds with its native `packages.<system>`.
 
 ## Patterns to follow when adding hosts
 
