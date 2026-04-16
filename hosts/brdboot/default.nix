@@ -42,10 +42,10 @@
     "cifs"    # SMB/CIFS network shares (Windows, NAS, Samba)
     "exfat"   # USB sticks, SD cards, cross-platform (native kernel ≥5.7)
     "f2fs"    # flash-optimized — Android, embedded, some Chromebooks
-    "jfs"     # IBM journaled FS — rare but still found on older enterprise systems
     "ntfs"    # Windows drives via FUSE ntfs3g — slower than native, but full R/W
     "xfs"     # RHEL/CentOS default — large file performance, common on servers
     # "bcachefs" — on-disk format drifts across kernel versions, not portable for recovery
+    "apfs"    # Apple APFS — read-only, out-of-tree kernel module (experimental)
   ];
 
   # Filesystems without dedicated NixOS modules.
