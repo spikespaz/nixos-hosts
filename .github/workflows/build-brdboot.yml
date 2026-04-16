@@ -1,4 +1,4 @@
-name: Build birdboot-portable images
+name: Build brdboot images
 
 on:
   pull_request:
@@ -6,18 +6,18 @@ on:
     paths:
       - "flake.nix"
       - "flake.lock"
-      - "hosts/birdboot/**"
+      - "hosts/brdboot/**"
       - ".github/actions/**"
-      - ".github/workflows/build-birdboot-portable.yml"
+      - ".github/workflows/build-brdboot.yml"
   push:
     branches: [master]
     tags: ["v*"]
     paths:
       - "flake.nix"
       - "flake.lock"
-      - "hosts/birdboot/**"
+      - "hosts/brdboot/**"
       - ".github/actions/**"
-      - ".github/workflows/build-birdboot-portable.yml"
+      - ".github/workflows/build-brdboot.yml"
   workflow_dispatch:
 
 env:
@@ -42,33 +42,33 @@ jobs:
 
       - uses: ./.github/actions/nix-setup
         with:
-          cache-name: birdboot-x86_64
+          cache-name: brdboot-x86_64
 
       - name: ephemeral-x86_64-linux
         uses: ./.github/actions/nix-build
         with:
-          attr: nixosConfigurations.birdboot-portable.config.system.build.images.ephemeral
+          attr: nixosConfigurations.brdboot.config.system.build.images.ephemeral
           artifact-name: ephemeral-x86_64-linux
           artifact-path: result-ephemeral-x86_64-linux/iso/*.iso
 
       - name: mutable-x86_64-linux
         uses: ./.github/actions/nix-build
         with:
-          attr: nixosConfigurations.birdboot-portable.config.system.build.images.mutable
+          attr: nixosConfigurations.brdboot.config.system.build.images.mutable
           artifact-name: mutable-x86_64-linux
           artifact-path: result-mutable-x86_64-linux/*.raw
 
       - name: immutable-x86_64-linux
         uses: ./.github/actions/nix-build
         with:
-          attr: nixosConfigurations.birdboot-portable.config.system.build.images.immutable
+          attr: nixosConfigurations.brdboot.config.system.build.images.immutable
           artifact-name: immutable-x86_64-linux
           artifact-path: result-immutable-x86_64-linux/*.raw
 
       - name: sealed-x86_64-linux
         uses: ./.github/actions/nix-build
         with:
-          attr: nixosConfigurations.birdboot-portable.config.system.build.images.sealed
+          attr: nixosConfigurations.brdboot.config.system.build.images.sealed
           artifact-name: sealed-x86_64-linux
           artifact-path: result-sealed-x86_64-linux/*.raw
 
@@ -92,12 +92,12 @@ jobs:
 
       - uses: ./.github/actions/nix-setup
         with:
-          cache-name: birdboot-aarch64
+          cache-name: brdboot-aarch64
 
       - name: ephemeral-aarch64-linux
         uses: ./.github/actions/nix-build
         with:
-          attr: nixosConfigurations.birdboot-portable-aarch64.config.system.build.images.ephemeral
+          attr: nixosConfigurations.brdboot-aarch64.config.system.build.images.ephemeral
           artifact-name: ephemeral-aarch64-linux
           artifact-path: result-ephemeral-aarch64-linux/iso/*.iso
 
