@@ -21,7 +21,7 @@
       # Caller modules are ordered before host defaults so callers can
       # use mkOrder and mkOverride to override without fighting evaluation order.
       setImageVersion = false;
-      mkBirdboot = { pkgs, modules ? [ ] }:
+      mkBrdboot = { pkgs, modules ? [ ] }:
         nixpkgs.lib.nixosSystem {
           inherit pkgs;
           modules = modules ++ [
@@ -42,28 +42,28 @@
           ];
         };
 
-        birdboot-portable = mkBirdboot { pkgs = pkgsFor."x86_64-linux"; };
+        brdboot = mkBrdboot { pkgs = pkgsFor."x86_64-linux"; };
 
-        birdboot-portable-aarch64 = mkBirdboot { pkgs = pkgsFor."aarch64-linux"; };
+        brdboot-aarch64 = mkBrdboot { pkgs = pkgsFor."aarch64-linux"; };
       };
 
       packages = lib.mapAttrs (buildSystem: _:
         let
-          birdbootFor = {
-            "x86_64-linux" = self.nixosConfigurations.birdboot-portable;
+          brdbootFor = {
+            "x86_64-linux" = self.nixosConfigurations.brdboot;
             "aarch64-linux" =
-              self.nixosConfigurations.birdboot-portable-aarch64;
+              self.nixosConfigurations.brdboot-aarch64;
           };
-          native = lib.optionalAttrs (birdbootFor ? ${buildSystem}) {
-            birdboot-images =
-              birdbootFor.${buildSystem}.config.system.build.images;
+          native = lib.optionalAttrs (brdbootFor ? ${buildSystem}) {
+            brdboot-images =
+              brdbootFor.${buildSystem}.config.system.build.images;
           };
           cross = lib.concatMapAttrs (hostSystem: config:
             lib.optionalAttrs (hostSystem != buildSystem) {
-              "birdboot-images-${hostSystem}" = (mkBirdboot {
+              "brdboot-images-${hostSystem}" = (mkBrdboot {
                 pkgs = pkgsCrossFor buildSystem hostSystem;
               }).config.system.build.images;
-            }) birdbootFor;
+            }) brdbootFor;
         in native // cross) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
