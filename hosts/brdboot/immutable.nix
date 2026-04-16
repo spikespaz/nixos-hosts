@@ -4,10 +4,10 @@
 
     system.image.id = "${config.system.nixos.distroId}-immutable";
 
-    # Grow bb-persist to fill available space on first boot.
-    systemd.repart.partitions."bb-persist" = {
+    # Grow brd-persist to fill available space on first boot.
+    systemd.repart.partitions."brd-persist" = {
       Type = "linux-generic";
-      Label = "bb-persist";
+      Label = "brd-persist";
     };
 
     fileSystems."/" = {
@@ -16,24 +16,24 @@
       options = [ "mode=0755" ];
     };
     fileSystems."/nix/store" = {
-      device = "/dev/disk/by-partlabel/bb-system";
+      device = "/dev/disk/by-partlabel/brd-system";
       fsType = "erofs";
     };
 
-    image.repart.partitions."bb-system" = {
+    image.repart.partitions."brd-system" = {
       storePaths = [ config.system.build.toplevel ];
       repartConfig = {
         Type = "linux-generic";
         Format = "erofs";
         Minimize = "guess";
-        Label = "bb-system";
+        Label = "brd-system";
       };
     };
-    image.repart.partitions."bb-persist" = {
+    image.repart.partitions."brd-persist" = {
       repartConfig = {
         Type = "linux-generic";
         SizeMinBytes = "1G";
-        Label = "bb-persist";
+        Label = "brd-persist";
       };
     };
   };
