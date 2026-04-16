@@ -45,6 +45,7 @@
     "jfs"     # IBM journaled FS — rare but still found on older enterprise systems
     "ntfs"    # Windows drives via FUSE ntfs3g — slower than native, but full R/W
     "xfs"     # RHEL/CentOS default — large file performance, common on servers
+    # "bcachefs" — on-disk format drifts across kernel versions, not portable for recovery
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
