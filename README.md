@@ -4,7 +4,7 @@ NixOS system configurations for personal machines and portable recovery media.
 
 Hosts include a WSL development environment and a bootable USB recovery image with encrypted persistent storage and a read-only system partition.
 
-## birdboot
+## brdboot
 
 Portable recovery image. Read-only NixOS system with encrypted persistent storage on a separate partition.
 
@@ -19,10 +19,10 @@ Portable recovery image. Read-only NixOS system with encrypted persistent storag
 
 ### Building
 
-All variants are built from the `birdboot-portable` NixOS configuration:
+All variants are built from the `brdboot` NixOS configuration:
 
 ```
-nix build .#nixosConfigurations.birdboot-portable.config.system.build.images.<variant>
+nix build .#nixosConfigurations.brdboot.config.system.build.images.<variant>
 ```
 
 ### Flashing
