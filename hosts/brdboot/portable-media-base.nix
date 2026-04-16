@@ -11,7 +11,7 @@
   systemd.repart.enable = true;
 
   fileSystems."/boot" = {
-    device = "/dev/disk/by-partlabel/bb-esp";
+    device = "/dev/disk/by-partlabel/brd-esp";
     fsType = "vfat";
   };
 
@@ -22,7 +22,7 @@
     pkgs.stdenv.hostPlatform.system
   ];
 
-  image.repart.partitions."bb-esp" = {
+  image.repart.partitions."brd-esp" = {
     contents =
       let
         efiArch = pkgs.stdenv.hostPlatform.efiArch;
@@ -41,6 +41,7 @@
     repartConfig = {
       Type = "esp";
       Format = "vfat";
+      Label = "brd-esp";
       SizeMinBytes = "768M";
       SizeMaxBytes = "768M";
     };
