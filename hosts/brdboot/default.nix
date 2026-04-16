@@ -1,4 +1,4 @@
-{ ... }: {
+{ pkgs, ... }: {
   imports = [
     ./ephemeral.nix
     ./mutable.nix
@@ -46,6 +46,18 @@
     "ntfs"    # Windows drives via FUSE ntfs3g — slower than native, but full R/W
     "xfs"     # RHEL/CentOS default — large file performance, common on servers
     # "bcachefs" — on-disk format drifts across kernel versions, not portable for recovery
+  ];
+
+  # Filesystems without dedicated NixOS modules.
+  # Kernel modules are built-in; userspace tools added manually.
+  boot.kernelModules = [
+    "hfsplus" # macOS HFS+ — older Macs, Time Machine backups (R/W but no journaling)
+    "udf"     # Universal Disk Format — DVDs, Blu-ray, large USB (≥2TB FAT alternative)
+    "ntfs3"   # native kernel NTFS driver (≥5.15) — faster than FUSE ntfs3g for reads
+  ];
+  environment.systemPackages = with pkgs; [
+    hfsprogs  # mkfs.hfsplus, fsck.hfsplus
+    udftools  # mkudffs, udfinfo, udflabel
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
