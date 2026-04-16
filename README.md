@@ -6,7 +6,7 @@ Hosts include a WSL development environment and a bootable USB recovery image wi
 
 ## brdboot
 
-Portable recovery image. Read-only NixOS system with encrypted persistent storage on a separate partition.
+**B**ootable **R**ecovery & **D**iagnostics — portable NixOS-based recovery image with encrypted persistent storage and a read-only system partition.
 
 ### Image variants
 
