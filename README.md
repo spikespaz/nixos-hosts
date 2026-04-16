@@ -50,9 +50,9 @@ After flashing `immutable`, the USB drive has:
 
 ```
 /dev/sdX
-├── /dev/sdX1  bb-esp     (FAT32, 768M)       EFI bootloader
-├── /dev/sdX2  bb-system  (erofs, ~var)        Nix store, system closure (read-only)
-└── /dev/sdX3  bb-persist (unformatted, 1G+)   Persistent storage (provisioned at first boot)
+├── /dev/sdX1  brd-esp     (FAT32, 768M)       EFI bootloader
+├── /dev/sdX2  brd-system  (erofs, ~var)        Nix store, system closure (read-only)
+└── /dev/sdX3  brd-persist (unformatted, 1G+)   Persistent storage (provisioned at first boot)
 ```
 
 The `sealed` variant wraps the system partition in LUKS.
