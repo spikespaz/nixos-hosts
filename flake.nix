@@ -25,7 +25,7 @@
         nixpkgs.lib.nixosSystem {
           inherit pkgs;
           modules = modules ++ [
-            ./hosts/birdboot
+            ./hosts/brdboot
             {
               system.image.version = lib.mkIf setImageVersion
                 (builtins.substring 0 7 (self.rev or self.dirtyRev or "unknown"));

@@ -12,19 +12,19 @@
   # Changing from "nixos" automatically sets ID_LIKE = "nixos" so
   # tooling that checks for NixOS compatibility still works.
   # https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/misc/version.nix#L121-L126
-  system.nixos.distroId = "birdboot";
+  system.nixos.distroId = "brdboot";
 
   # NAME and PRETTY_NAME in os-release(5), syslinux/grub boot menu
   # title and entry labels. Default is "NixOS" (capitalized).
   # https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/misc/version.nix#L128-L133
-  system.nixos.distroName = "Birdboot";
+  system.nixos.distroName = "Brdboot";
 
   # VARIANT_ID and VARIANT in os-release(5).
   # https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/misc/version.nix#L135-L147
   system.nixos.variant_id = "portable-recovery";
-  system.nixos.variantName = "Birdboot: Portable Recovery";
+  system.nixos.variantName = "Brdboot: Portable Recovery";
 
-  networking.hostName = "birdboot";
+  networking.hostName = "brdboot";
 
   # Load initrd modules for all common storage controllers (AHCI, NVMe,
   # USB, SCSI, SD, virtio, VMware, Hyper-V) and bundle redistributable
