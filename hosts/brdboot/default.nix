@@ -34,18 +34,29 @@
   # See: https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/hardware/all-hardware.nix
   hardware.enableAllHardware = true;
 
-  # Recovery target filesystem support — mount and inspect drives
-  # from any machine this boots on. Own partition types (vfat, ext4,
-  # erofs) are auto-populated from fileSystems entries.
+  # Filesystem support for recovery — mount and inspect drives from
+  # any machine this boots on.
   boot.supportedFilesystems = [
-    "btrfs"   # copy-on-write, snapshots, checksums — default on many Linux distros
-    "cifs"    # SMB/CIFS network shares (Windows, NAS, Samba)
-    "exfat"   # USB sticks, SD cards, cross-platform (native kernel ≥5.7)
-    "f2fs"    # flash-optimized — Android, embedded, some Chromebooks
-    "ntfs"    # Windows drives via FUSE ntfs3g — slower than native, but full R/W
-    "xfs"     # RHEL/CentOS default — large file performance, common on servers
+    # -- variant-module defaults, listed here so the full picture is
+    #    visible and they're enabled regardless of which variant runs --
+    "vfat"     # ESP boot partition (portable-media-base.nix)
+    "ext4"     # mutable variant root
+    "erofs"    # immutable/sealed variant system partition
+    "tmpfs"    # immutable/sealed variant root overlay
+    # -- iso-image.nix filesystems, explicitly enabled --
+    "squashfs" # compressed read-only root
+    "iso9660"  # ISO filesystem
+
+    # -- recovery targets --
+    "btrfs"    # copy-on-write, snapshots, checksums — default on many Linux distros
+    "cifs"     # SMB/CIFS network shares (Windows, NAS, Samba)
+    "exfat"    # USB sticks, SD cards, cross-platform (native kernel ≥5.7)
+    "f2fs"     # flash-optimized — Android, embedded, some Chromebooks
+    "jfs"      # IBM journaled FS — rare but still found on older enterprise systems
+    "ntfs"     # Windows drives via FUSE ntfs3g — slower than native, but full R/W
+    "xfs"      # RHEL/CentOS default — large file performance, common on servers
     # "bcachefs" — on-disk format drifts across kernel versions, not portable for recovery
-    "apfs"    # Apple APFS — read-only, out-of-tree kernel module (experimental)
+    "apfs"     # Apple APFS — read-only, out-of-tree kernel module (experimental)
   ];
 
   # Filesystems without dedicated NixOS modules.
