@@ -4,19 +4,19 @@
 
     system.image.id = "${config.system.nixos.distroId}-mutable";
 
-    # Grow bb-root to fill available space on first boot.
-    systemd.repart.partitions."bb-root" = {
+    # Grow brd-root to fill available space on first boot.
+    systemd.repart.partitions."brd-root" = {
       Type = "root";
-      Label = "bb-root";
+      Label = "brd-root";
     };
 
     fileSystems."/" = {
-      device = "/dev/disk/by-partlabel/bb-root";
+      device = "/dev/disk/by-partlabel/brd-root";
       fsType = "ext4";
       autoResize = true;
     };
 
-    image.repart.partitions."bb-root" = {
+    image.repart.partitions."brd-root" = {
       storePaths = [ config.system.build.toplevel ];
       contents = {
         "/nix/var/nix/profiles/system".source = config.system.build.toplevel;
@@ -25,7 +25,7 @@
         Type = "root";
         Format = "ext4";
         Minimize = "guess";
-        Label = "bb-root";
+        Label = "brd-root";
       };
     };
   };
