@@ -1,11 +1,13 @@
 { pkgs, ... }: {
   imports = [
+    # Variant deferred modules
     ./ephemeral.nix
     ./mutable.nix
     ./immutable.nix
     ./sealed.nix
 
     # Shared infrastructure (gated behind brdboot.* options, default off).
+    ./homed.nix
     ./single-prompt-boot.nix
   ];
 
