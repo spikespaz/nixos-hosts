@@ -29,6 +29,10 @@
       repartConfig = {
         Type = "root";
         Format = "ext4";
+        # ext4 is read-write and repart rejects Minimize=best on it
+        # ("can only be used with read-only filesystems or Verity=hash").
+        # "guess" stays — brd-root grows to fill the disk at first boot
+        # anyway, so the build-time padding is recovered.
         Minimize = "guess";
         Label = "brd-root";
       };
