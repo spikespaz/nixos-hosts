@@ -4,6 +4,9 @@
     ./mutable.nix
     ./immutable.nix
     ./sealed.nix
+
+    # Shared infrastructure (gated behind brdboot.* options, default off).
+    ./single-prompt-boot.nix
   ];
 
   system.stateVersion = "25.05";
