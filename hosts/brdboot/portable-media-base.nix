@@ -65,8 +65,15 @@
       Type = "esp";
       Format = "vfat";
       Label = "brd-esp";
-      SizeMinBytes = "768M";
-      SizeMaxBytes = "768M";
+      # Floor that fits systemd-boot + UKI + FAT overhead. The ESP is
+      # written once at image build; no room reserved for generations.
+      #
+      # Can't use Minimize = "guess" alone: the verity variant (immutable)
+      # defers ESP population to finalImage, so the UKI isn't a "content"
+      # at intermediate time and repart would size the partition to the
+      # FAT minimum, leaving no room for the later UKI injection. The
+      # floor guarantees enough space regardless of when the UKI lands.
+      SizeMinBytes = "512M";
     };
   };
 }
