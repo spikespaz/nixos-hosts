@@ -4,6 +4,10 @@
 
     system.image.id = "${config.system.nixos.distroId}-immutable";
 
+    # UKI injection into ESP (see note in portable-media-base.nix).
+    image.repart.partitions."brd-esp".contents."/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
+      "${config.system.build.uki}/${config.system.boot.loader.ukiFile}";
+
     # Grow brd-persist to fill available space on first boot.
     systemd.repart.partitions."brd-persist" = {
       Type = "linux-generic";
