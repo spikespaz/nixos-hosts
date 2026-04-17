@@ -1,6 +1,12 @@
 # Shared config for all repart-based portable media variants.
-# Provides: systemd-boot + UKI, ESP partition, image naming, runtime grow.
-# Each variant imports this and adds its own root filesystem and partitions.
+# Provides: systemd-boot, ESP partition, image naming, runtime grow.
+# Each variant imports this and adds its own root filesystem, partitions,
+# and UKI injection into the ESP.
+#
+# Note: UKI injection is deferred to variants because the verityStore
+# module injects the UKI via finalImage override. Referencing
+# config.system.build.uki here would create a dependency cycle:
+#   image → uki (from ESP contents) → intermediateImage → image.
 { lib, config, modulesPath, pkgs, ... }: {
   imports = [ (modulesPath + "/image/repart.nix") ];
 
@@ -26,13 +32,10 @@
     contents =
       let
         efiArch = pkgs.stdenv.hostPlatform.efiArch;
-        ukiFile = config.system.boot.loader.ukiFile;
       in
       {
         "/EFI/BOOT/BOOT${lib.toUpper efiArch}.EFI".source =
           "${pkgs.systemd}/lib/systemd/boot/efi/systemd-boot${efiArch}.efi";
-        "/EFI/Linux/${ukiFile}".source =
-          "${config.system.build.uki}/${ukiFile}";
         "/loader/loader.conf".source = pkgs.writeText "loader.conf" ''
           timeout 5
           default @saved
