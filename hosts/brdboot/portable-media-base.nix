@@ -28,6 +28,20 @@
     pkgs.stdenv.hostPlatform.system
   ];
 
+  # Upstream repart-image.nix constructs image.baseName as
+  # "${image.repart.name}_${version}" — an underscore between arch
+  # and version. Override to use a dash instead, matching ephemeral
+  # and the general nix convention "${name}-${version}". Use
+  # mkImageMediaOverride so a downstream deployment can still mkForce.
+  image.baseName = lib.mkImageMediaOverride (lib.concatStringsSep "-" (
+    [
+      config.system.image.id
+      config.system.nixos.label
+      pkgs.stdenv.hostPlatform.system
+    ] ++ lib.optional (config.system.image.version != null)
+      config.system.image.version
+  ));
+
   image.repart.partitions."brd-esp" = {
     contents =
       let
