@@ -48,10 +48,12 @@
         Label = "brd-system";
       };
     };
+    # Minimum GPT-aligned reservation; systemd-repart grows it on first
+    # boot.
     image.repart.partitions."brd-persist" = {
       repartConfig = {
         Type = "linux-generic";
-        SizeMinBytes = "1G";
+        SizeMinBytes = "1M";
         Label = "brd-persist";
       };
     };
