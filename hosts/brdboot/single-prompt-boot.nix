@@ -46,7 +46,11 @@ let
   #   5. Install the deploy key at the path
   #      systemd-cryptsetup@brd-system reads via its crypttab entry
   #   6. Stage username + password as systemd credentials under
-  #      /run/credentials/@system/ for a later PAM consumer to pick up
+  #      /run/credentials/@system/brdboot.login-{user,password} —
+  #      post-pivot the brdboot-pam-credential PAM module reads them
+  #      from there (see packages/brdboot-pam-credential/), feeds them
+  #      into the PAM stack, and unlinks the files so they don't
+  #      persist past first consumption
   #
   # Unmounting brd-keystores happens in the script's EXIT trap.
   unlockScript = pkgs.writeShellApplication {
