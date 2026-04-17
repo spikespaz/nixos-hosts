@@ -14,6 +14,12 @@
   boot.loader.efi.canTouchEfiVariables = false;
   boot.loader.grub.enable = false;
 
+  # Partition grow at boot is handled by systemd-repart (see per-variant
+  # systemd.repart.partitions entries); disable the alternative
+  # growPartition service explicitly so no future import races repart
+  # for the GPT header. Use lib.mkForce to re-enable.
+  boot.growPartition = lib.mkImageMediaOverride false;
+
   systemd.repart.enable = true;
 
   fileSystems."/boot" = {
