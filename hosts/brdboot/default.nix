@@ -1,4 +1,4 @@
-{ pkgs, ... }: {
+{ pkgs, lib, ... }: {
   imports = [
     # Variant deferred modules
     ./ephemeral.nix
@@ -86,4 +86,16 @@
   # To be cleaned up once the homed-enablement PR (carved from #36)
   # introduces proper per-user encrypted homes and a first-boot prompt.
   users.users.root.initialPassword = "password";
+
+  # Disable the pre-allocated nixbld{1..N} build-user pool. Recovery
+  # images have a read-only (immutable/sealed) or ephemeral nix store
+  # and don't run nix builds at runtime. Removing these users also
+  # unblocks systemd-homed-firstboot.service — NixOS's default
+  # ids.uids.nixbld = 30000 places nixbld{N} above UID 1000, so
+  # systemd-userdb sees them as regular users and homectl firstboot
+  # refuses to prompt because "regular users already exist".
+  #
+  # mkImageMediaOverride so a variant that genuinely needs builders
+  # can override with lib.mkForce without fighting priorities.
+  nix.nrBuildUsers = lib.mkImageMediaOverride 0;
 }

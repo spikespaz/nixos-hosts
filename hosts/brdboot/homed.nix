@@ -22,14 +22,6 @@ in
   };
 
   config = lib.mkIf cfg.enable {
-    # Silence the high-system-UID warning about the nixbld build users.
-    # Side effect: systemd-homed-firstboot.service may not actually prompt
-    # because systemd-userdb sees nixbld* as regular users (UID >=1000).
-    # For a proper fix we'd need to lower ids.uids.nixbld or disable the
-    # build users entirely — deferred to a follow-up. Until then, create
-    # accounts manually after boot: `sudo homectl create <username>`.
-    services.userdbd.silenceHighSystemUsers = true;
-
     services.homed = {
       enable = true;
       # Prompt on first boot so an operator / debugger can spin up an
