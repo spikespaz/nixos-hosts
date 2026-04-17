@@ -222,6 +222,24 @@ in
         "" # reset the default
         "${autologinGetty}/bin/brdboot-autologin-getty %I"
       ];
+
+      # Belt-and-suspenders cleanup: the PAM module unlinks the credential
+      # files on successful read, but if auto-login never runs (getty
+      # crash, user logged in via ssh instead, etc.) the files would
+      # linger in /run/credentials/@system/ until reboot. Remove them
+      # unconditionally once the system has reached multi-user — PAM has
+      # either consumed them by now or never will on this boot.
+      systemd.services.brdboot-cred-cleanup = {
+        description = "brdboot: remove leftover staged login credentials";
+        wantedBy = [ "multi-user.target" ];
+        after = [ "multi-user.target" ];
+        serviceConfig = {
+          Type = "oneshot";
+          ExecStart = "${pkgs.coreutils}/bin/rm -f"
+            + " /run/credentials/@system/brdboot.login-user"
+            + " /run/credentials/@system/brdboot.login-password";
+        };
+      };
     })
   ];
 }
