@@ -78,6 +78,13 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
     goto cleanup;
   }
 
+  /* PAM has the values in its handle now — unlink the file copies so
+   * the credentials are strictly one-shot. The C locals are wiped in
+   * cleanup: below. Ignore unlink errors; if they fail, the defensive
+   * cleanup service will catch the leftovers after multi-user.target. */
+  (void)unlink(USER_FILE);
+  (void)unlink(PASS_FILE);
+
   rc = PAM_SUCCESS;
 
 cleanup:
