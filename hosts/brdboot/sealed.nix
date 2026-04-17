@@ -1,8 +1,9 @@
 { ... }: {
-  image.modules.sealed = { config, ... }: {
+  image.modules.sealed = { lib, config, ... }: {
     imports = [ ./portable-media-base.nix ];
 
     system.image.id = "${config.system.nixos.distroId}-sealed";
+    system.image.version = lib.mkDefault "1";
 
     # UKI injection into ESP (see note in portable-media-base.nix).
     image.repart.partitions."brd-esp".contents."/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
