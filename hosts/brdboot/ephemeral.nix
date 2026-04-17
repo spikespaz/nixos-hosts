@@ -11,17 +11,22 @@
     # Reserved for a future feature-set shortcode.
     # When non-empty, appears in both baseName and volumeID.
     system.image.id = "${config.system.nixos.distroId}-ephemeral";
+    system.image.version = lib.mkDefault "1";
     isoImage.edition = "";
 
-    # ${image.id}-${label}-${system}_${version}.iso
-    # mkForce: iso-image.nix hardcodes "nixos" as a bare assignment (priority 100).
-    # See: https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/installer/cd-dvd/iso-image.nix#L1033-L1035
-    image.baseName = lib.mkForce (lib.concatStringsSep "-" [
-      config.system.image.id
-      config.system.nixos.label
-      pkgs.stdenv.hostPlatform.system
-    ] + lib.optionalString (config.system.image.version != null)
-      "_${config.system.image.version}");
+    # ${image.id}-${label}-${system}-${version}.iso
+    # Overrides iso-image.nix's hardcoded "nixos-..." baseName
+    # (https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/installer/cd-dvd/iso-image.nix#L1033-L1035).
+    # Use lib.mkForce to override further. Dash separator matches
+    # repart-image.nix, keeping filenames consistent across variants.
+    image.baseName = lib.mkImageMediaOverride (lib.concatStringsSep "-" (
+      [
+        config.system.image.id
+        config.system.nixos.label
+        pkgs.stdenv.hostPlatform.system
+      ] ++ lib.optional (config.system.image.version != null)
+        config.system.image.version
+    ));
 
     # ISO 9660 volume label — used at boot by the initrd to locate
     # and mount the CD/USB device (root=LABEL=...). Max 32 characters.
