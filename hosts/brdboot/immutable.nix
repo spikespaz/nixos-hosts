@@ -81,6 +81,27 @@
       "systemd.verity_usr_options=panic-on-corruption"
     ];
 
+    # Enable the single-prompt auth chain for end-to-end testing.
+    # Immutable has no LUKS on brd-system, so brdboot-unlock falls back
+    # to credential-staging only (no keystore unlock). autoLogin picks
+    # up the staged credentials via pam_brdboot_credential and skips
+    # the getty prompt.
+    #
+    # First-boot flow:
+    #   1. Initrd prompts for user + password (staged to /run/credentials)
+    #   2. dm-verity activates, pivot
+    #   3. systemd-homed-firstboot.service prompts for the same user +
+    #      password (creates the homed user + LUKS home container)
+    #   4. getty@tty1 wrapper reads the staged user, agetty --autologin
+    #   5. PAM stack: pam_brdboot_credential sets user/authtok from the
+    #      staged credentials; pam_systemd_home unlocks the container
+    #
+    # Subsequent boots: steps 1, 2, 4, 5 (step 3 runs only once).
+    # Type the SAME password at both step 1 and step 3 prompts on
+    # first boot or PAM auto-login will reject the mismatch.
+    brdboot.singlePrompt.enable = true;
+    brdboot.singlePrompt.autoLogin = true;
+
     # UKI injection is handled by the verityStore module's finalImage override.
     # The module bakes the verity root hash into the UKI cmdline.
     #
