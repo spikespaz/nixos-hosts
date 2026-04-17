@@ -1,8 +1,9 @@
 { ... }: {
-  image.modules.mutable = { config, ... }: {
+  image.modules.mutable = { lib, config, ... }: {
     imports = [ ./portable-media-base.nix ];
 
     system.image.id = "${config.system.nixos.distroId}-mutable";
+    system.image.version = lib.mkDefault "1";
 
     # UKI injection into ESP (see note in portable-media-base.nix).
     image.repart.partitions."brd-esp".contents."/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
