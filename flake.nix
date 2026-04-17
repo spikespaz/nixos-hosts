@@ -47,7 +47,7 @@
         brdboot-aarch64 = mkBrdboot { pkgs = pkgsFor."aarch64-linux"; };
       };
 
-      packages = lib.mapAttrs (buildSystem: _:
+      packages = lib.mapAttrs (buildSystem: pkgs:
         let
           brdbootFor = {
             "x86_64-linux" = self.nixosConfigurations.brdboot;
@@ -64,7 +64,11 @@
                 pkgs = pkgsCrossFor buildSystem hostSystem;
               }).config.system.build.images;
             }) brdbootFor;
-        in native // cross) pkgsFor;
+          localPackages = {
+            brdboot-pam-credential =
+              pkgs.callPackage ./packages/brdboot-pam-credential { };
+          };
+        in native // cross // localPackages) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
     };
