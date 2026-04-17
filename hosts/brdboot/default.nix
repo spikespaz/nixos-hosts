@@ -7,6 +7,10 @@
     ./sealed.nix
 
     # Shared infrastructure (gated behind brdboot.* options, default off).
+    # keystores.nix lives alongside but is imported per-variant, not here:
+    # it writes to image.repart.*, which is only in scope where
+    # <nixpkgs>/nixos/modules/image/repart.nix is imported (via
+    # portable-media-base inside each deferred variant module).
     ./homed.nix
     ./single-prompt-boot.nix
   ];
