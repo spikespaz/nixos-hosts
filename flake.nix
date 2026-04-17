@@ -69,6 +69,8 @@
               pkgs.callPackage ./packages/brdboot-verify-image { };
             brdboot-verify-self =
               pkgs.callPackage ./packages/brdboot-verify-self { };
+            brdboot-pam-credential =
+              pkgs.callPackage ./packages/brdboot-pam-credential { };
           };
           tests = lib.optionalAttrs (buildSystem == "x86_64-linux") {
             # Clean immutable image with 4 bytes flipped 4 KiB into
