@@ -34,44 +34,43 @@ let
       set -euo pipefail
 
       PERSIST_DEV="${cfg.persistPartition}"
-      SYSTEM_DEV="${cfg.systemLuksPartition}"
       PERSIST_MNT="/brdboot-persist"
       DEPLOY_KEY="/run/brdboot/deploy.key"
       CREDS_DIR="/run/credentials/@system"
 
       mkdir -p "$PERSIST_MNT" "$(dirname "$DEPLOY_KEY")" "$CREDS_DIR"
 
-      # Mount persist read-only so we can read keystores and homed records.
-      mount -o ro "$PERSIST_DEV" "$PERSIST_MNT"
-      trap 'umount "$PERSIST_MNT" 2>/dev/null || true' EXIT
-
-      # Interactive prompts. systemd-ask-password handles the cosmetic UI
-      # (plymouth/console/ssh askpw agents all work).
+      # Prompt first — credentials are staged regardless of whether
+      # a keystore unlock happens. systemd-ask-password handles the
+      # cosmetic UI (plymouth/console/ssh askpw agents all work).
       USERNAME=$(systemd-ask-password --timeout=0 "brdboot user:")
       PASSWORD=$(systemd-ask-password --timeout=0 "Password:")
 
-      KEYSTORE="$PERSIST_MNT/keystores/$USERNAME.keystore"
-      if [ ! -f "$KEYSTORE" ]; then
-        echo "brdboot: no keystore for user '$USERNAME'" >&2
-        exit 1
+      # Try the keystore unlock flow. If brd-persist isn't available
+      # or there's no keystore for this user, fall back to
+      # credential-staging only (test mode; variants without LUKS
+      # brd-system or without keystore provisioning get the credential
+      # passthrough without the unlock step).
+      if mount -o ro "$PERSIST_DEV" "$PERSIST_MNT" 2>/dev/null; then
+        trap 'umount "$PERSIST_MNT" 2>/dev/null || true' EXIT
+        KEYSTORE="$PERSIST_MNT/keystores/$USERNAME.keystore"
+        if [ -f "$KEYSTORE" ]; then
+          MAPPER="brdboot-keystore-$USERNAME"
+          echo -n "$PASSWORD" | cryptsetup open --type luks2 --key-file=- \
+            "$KEYSTORE" "$MAPPER"
+          # Keystore's decrypted volume is a tiny blob containing the
+          # deployment key verbatim. Read it, stage it, close.
+          cp "/dev/mapper/$MAPPER" "$DEPLOY_KEY"
+          cryptsetup close "$MAPPER"
+          install -m 0400 "$DEPLOY_KEY" /run/brdboot/deploy.key
+        else
+          echo "brdboot-unlock: no keystore for '$USERNAME' — skipping LUKS unlock" >&2
+        fi
+      else
+        echo "brdboot-unlock: $PERSIST_DEV unavailable — skipping LUKS unlock" >&2
       fi
 
-      # Open keystore with the user's password. Failure = wrong password.
-      MAPPER="brdboot-keystore-$USERNAME"
-      echo -n "$PASSWORD" | cryptsetup open --type luks2 --key-file=- \
-        "$KEYSTORE" "$MAPPER"
-
-      # The keystore's decrypted volume is a tiny blob containing the
-      # deployment key verbatim. Read it out, close the keystore.
-      cp "/dev/mapper/$MAPPER" "$DEPLOY_KEY"
-      cryptsetup close "$MAPPER"
-
-      # systemd-cryptsetup@brd-system reads its key from this path via the
-      # crypttab keyfile parameter (set in the service unit below).
-      install -m 0400 "$DEPLOY_KEY" /run/brdboot/deploy.key
-
-      # Stage the credentials for post-boot auto-login. Commit 5 adds a
-      # PAM consumer; commit 7d gates the actual staging here.
+      # Stage credentials unconditionally for post-boot auto-login.
       install -m 0400 /dev/stdin "$CREDS_DIR/brdboot.login-user" \
         <<< "$USERNAME"
       install -m 0400 /dev/stdin "$CREDS_DIR/brdboot.login-password" \
