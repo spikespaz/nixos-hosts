@@ -49,9 +49,11 @@
       };
     };
     image.repart.partitions."brd-persist" = {
+      # Minimum GPT-aligned reservation; systemd-repart extends it
+      # into trailing free space on first boot.
       repartConfig = {
         Type = "linux-generic";
-        SizeMinBytes = "1G";
+        SizeMinBytes = "1M";
         Label = "brd-persist";
       };
     };
