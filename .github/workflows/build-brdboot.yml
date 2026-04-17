@@ -58,10 +58,16 @@ jobs:
           artifact-name: mutable-x86_64-linux
           artifact-path: result-mutable-x86_64-linux/*.raw
 
+      # The verity-store module builds a three-derivation pipeline:
+      #   intermediateImage (partitions minus ESP)
+      #     → uki (cmdline bakes root hash extracted from intermediate)
+      #       → finalImage (injects UKI into ESP)
+      # The regular system.build.image of the immutable variant is
+      # non-bootable (empty ESP) by design — we build finalImage.
       - name: immutable-x86_64-linux
         uses: ./.github/actions/nix-build
         with:
-          attr: nixosConfigurations.brdboot.config.system.build.images.immutable
+          attr: nixosConfigurations.brdboot.config.system.build.images.immutable.passthru.config.system.build.finalImage
           artifact-name: immutable-x86_64-linux
           artifact-path: result-immutable-x86_64-linux/*.raw
 
