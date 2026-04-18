@@ -59,5 +59,32 @@
         Label = "brd-persist";
       };
     };
+
+    # Small plaintext partition holding per-user <user>.keystore LUKS
+    # blobs. The partition is plaintext at the block level, but each
+    # keystore file is itself a LUKS2 container keyed by the user's
+    # password — so the only leak is the list of enrolled usernames
+    # and their count. Deployment key material stays behind each
+    # keystore's LUKS envelope.
+    #
+    # Pre-formatted as ext4 at build time so repart accepts the
+    # Minimize="guess" directive (repart requires Format= to be set
+    # before it will honor Minimize=) and so provisioning can drop
+    # <user>.keystore files straight into the existing filesystem
+    # without needing to mkfs first. 16 MiB floor covers ext4 metadata
+    # plus a dozen-ish keystores; guess packs tighter when build-time
+    # contents are supplied (see #38 for a later switch to erofs).
+    #
+    # No DPS type fits, so we use linux-generic and look up by
+    # partlabel at runtime rather than relying on auto-discovery.
+    image.repart.partitions."brd-keystores" = {
+      repartConfig = {
+        Type = "linux-generic";
+        Format = "ext4";
+        SizeMinBytes = "16M";
+        Minimize = "guess";
+        Label = "brd-keystores";
+      };
+    };
   };
 }
