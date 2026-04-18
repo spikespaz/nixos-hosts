@@ -65,8 +65,11 @@
       Type = "esp";
       Format = "vfat";
       Label = "brd-esp";
-      SizeMinBytes = "768M";
-      SizeMaxBytes = "768M";
+      # On vfat (read-write), repart rejects "best"; guess is the fallback.
+      # Variants that defer UKI injection to finalImage (e.g. via verityStore)
+      # must seed a placeholder at the UKI path so there's content for repart
+      # to measure at intermediate time.
+      Minimize = "guess";
     };
   };
 }
