@@ -1,8 +1,51 @@
 { ... }: {
-  image.modules.immutable = { config, lib, ... }: {
-    imports = [ ./portable-media-base.nix ];
+  image.modules.immutable = { config, lib, pkgs, ... }:
+    let
+      # Bare filename (not a path) — shared below as ukify's --output
+      # basename and as the ESP source path's basename. Must match
+      # verityStore's finalImage injection, which uses the same form.
+      ukiFile = config.system.boot.loader.ukiFile;
 
-    system.image.id = "${config.system.nixos.distroId}-immutable";
+      # Sizing UKI for the ESP: verityStore injects the real (verity-
+      # hashed) UKI into finalImage, so at intermediate-image time repart
+      # sees no UKI content and would size the ESP to a few hundred KiB —
+      # too small for the real UKI (tens of MiB) to fit later.
+      #
+      # Fix: seed a placeholder UKI at the exact path verityStore uses,
+      # with a cmdline byte-matched to the real one — same `init=... <kernel
+      # params>` format plus `usrhash=` with 64 zero hex digits in place of
+      # the real SHA-256. Identical cmdline byte length → identical PE
+      # .cmdline section alignment → identical UKI file size → ESP sized
+      # exactly. At finalImage time verityStore's lib.recursiveUpdate
+      # replaces the placeholder .source with the real UKI.
+      placeholderHash = lib.concatStrings (lib.genList (_: "0") 64);
+
+      # Byte-match upstream's cmdline construction — verityStore builds the
+      # same string and appends the real hash as `${cmdline} usrhash=$usrhash`:
+      # https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/image/repart-verity-store.nix#L149-L172
+      sizingCmdline = "init=${config.system.build.toplevel}/init ${toString config.boot.kernelParams} usrhash=${placeholderHash}";
+
+      # Mirrors verityStore's own runCommand + ukify build invocation at the
+      # link above — same flags (--config, --cmdline, --output), same
+      # nativeBuildInputs (systemdUkify; jq is only needed for the real
+      # usrhash extraction). Can't just reference config.system.build.uki:
+      # verityStore overrides it to depend on the intermediate image (for
+      # the real usrhash), and the intermediate image's size depends on the
+      # ESP → cycle.
+      sizingUki = pkgs.runCommand "brdboot-immutable-sizing-uki" {
+        nativeBuildInputs = [ pkgs.buildPackages.systemdUkify ];
+      } ''
+        mkdir -p $out
+        ukify build \
+          --config=${config.boot.uki.configFile} \
+          --cmdline="${sizingCmdline}" \
+          --output="$out/${ukiFile}"
+      '';
+    in
+    {
+      imports = [ ./portable-media-base.nix ];
+
+      system.image.id = "${config.system.nixos.distroId}-immutable";
     # Required for the verityStore module — it reads previousAttrs.pname
     # on the intermediate image derivation, and repart-image.nix only sets
     # pname when version is non-null (falls back to bare `name` otherwise).
@@ -47,6 +90,15 @@
         store-verity = "brd-system-verity";
         store = "brd-system";
       };
+    };
+
+    # Seed the ESP with a placeholder UKI at the exact path verityStore
+    # will later use for the real UKI, so Minimize="guess" from
+    # portable-media-base sizes the partition correctly at intermediate
+    # time. See the sizingUki let-binding above for the full rationale.
+    image.repart.partitions."brd-esp".contents = {
+      "${config.image.repart.verityStore.ukiPath}".source =
+        "${sizingUki}/${ukiFile}";
     };
 
     # Keep brd-* GPT label convention — module defaults to "store"/"store-verity".
