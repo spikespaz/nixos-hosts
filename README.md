@@ -92,17 +92,28 @@ Straightforward, no WSL dependency, but doesn't verify after flash
 — fall back to the manual `cmp` block above if the drive is worth
 catching corruption on.
 
-Option B — WSL + the PowerShell wrapper, requires WSL installed:
+Option B — WSL + the PowerShell wrapper, requires WSL2 installed.
+Interactive by default (prompts to plug the USB in, confirms the
+wipe); pass `-Disk <N>` to skip the prompts:
 
 ```
-.\scripts\brdboot-flash.ps1 -Disk <N>
+gsudo .\scripts\brdboot-flash.ps1              # interactive
+gsudo .\scripts\brdboot-flash.ps1 -Disk <N>    # non-interactive
 ```
 
 The wrapper attaches `\\.\PHYSICALDRIVE<N>` to WSL via `wsl --mount
 --bare`, invokes `brdboot-flash.sh` inside WSL so the flash and
-SHA-256 verify run as on a native Linux host, and detaches on exit.
-Must be run in an elevated PowerShell. Find the disk number with
-`Get-Disk` in PowerShell.
+SHA-256 verify run as on a native Linux host, and detaches the drive
+on exit.
+
+`gsudo` is [a Windows sudo-equivalent](https://github.com/gerardog/gsudo)
+that elevates a single command without spawning a separate admin
+window. Install with `winget install gerardog.gsudo` or from scoop. A
+standalone elevated PowerShell works equivalently.
+
+`Get-Help .\scripts\brdboot-flash.ps1 -Full` prints parameter docs
+and examples. `Get-Disk` lists candidate disk numbers for the
+non-interactive form.
 
 After flashing `immutable`, the USB drive has:
 
