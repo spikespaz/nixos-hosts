@@ -75,7 +75,47 @@
     udftools  # mkudffs, udfinfo, udflabel
   ];
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+      # Dynamically allocate build UIDs from user namespaces
+      # (872415232+ on Linux) instead of creating persistent
+      # nixbld{1..N} entries in /etc/passwd (NixOS default: 32
+      # system users at UIDs 30001-30032). NixOS's nix-daemon module
+      # makes nrBuildUsers conditional on this flag and falls back
+      # to 0 when it is set — nix builds still work because the
+      # sandbox allocates UIDs on demand.
+      #
+      # The motivation is upstream of brdboot: systemd-userdb
+      # classifies any user with UID >= 1000 (systemd's
+      # SYSTEM_UID_MAX) as "regular" and systemd-homed-firstboot
+      # refuses to prompt for account creation when regular users
+      # already exist. nixbld's default UID of 30000 trips that
+      # check. Removing the persistent users entirely avoids the
+      # conflict; downstream homed.nix likewise needs no
+      # services.userdbd.silenceHighSystemUsers workaround since
+      # there are no high system users to silence warnings about.
+      #
+      # Recovery images otherwise wouldn't need persistent build
+      # users at runtime — immutable/sealed stores are kernel-
+      # enforced RO (verity / erofs-in-LUKS); ephemeral is squashfs
+      # RO; mutable alone could build, and only after remounting
+      # the store rw. Build capability is preserved via namespace-
+      # allocated UIDs anyway, so field rebuilds aren't precluded:
+      # nix stays a first-class tool on the deployed image.
+      #
+      # Experimental feature. Adoption decision, known issues, and
+      # exit criteria tracked in #41. Fallback if the feature
+      # regresses: drop this list entry and the auto-allocate-uids
+      # toggle below, set ids.uids.nixbld = 350.
+      "auto-allocate-uids"
+    ];
+
+    # Toggle the actual behavior — the experimental-features entry
+    # above merely permits it.
+    auto-allocate-uids = true;
+  };
 
   # Stopgap so HW-test logins work before homed-based account creation
   # lands. Flashed images accept `root` / `password` at the tty1 prompt,
