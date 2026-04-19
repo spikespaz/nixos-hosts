@@ -31,6 +31,8 @@ nix build .#nixosConfigurations.brdboot.config.system.build.images.<variant>
 
 ```
 sudo dd if=result/iso/*.iso of=/dev/sdX bs=4M status=progress conv=fsync
+sync
+cmp <(sudo dd if=/dev/sdX bs=4M iflag=count_bytes count=$(stat -c%s result/iso/*.iso) 2>/dev/null) result/iso/*.iso && echo OK
 ```
 
 On Windows, [Rufus](https://rufus.ie) detects the hybrid ISO and offers
@@ -40,7 +42,17 @@ DD mode — select it.
 
 ```
 sudo dd if=result/*.raw of=/dev/sdX bs=4M status=progress conv=fsync
+sync
+cmp <(sudo dd if=/dev/sdX bs=4M iflag=count_bytes count=$(stat -c%s result/*.raw) 2>/dev/null) result/*.raw && echo OK
 ```
+
+The `cmp` read-back is strongly recommended on `immutable` — the UKI
+cmdline carries `systemd.verity_usr_options=panic-on-corruption`, so
+any corrupted block read during boot turns into an immediate kernel
+panic. Catch it in ~10 seconds of host-side byte compare rather than
+mid-boot on the target. Skip only if you trust the drive and you'd
+rather reflash than verify; consumer USB sticks routinely drop bits
+during sustained multi-GB writes without the flasher noticing.
 
 On Windows, Rufus does not detect raw images automatically. Select
 "All files (\*.\*)" in the file picker to see `.raw` and `.img` files,
