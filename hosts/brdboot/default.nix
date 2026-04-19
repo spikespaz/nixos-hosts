@@ -35,4 +35,13 @@
   hardware.enableAllHardware = true;
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
+
+  # Stopgap so HW-test logins work before homed-based account creation
+  # lands. Flashed images accept `root` / `password` at the tty1 prompt,
+  # which is enough to run `dmesg | grep verity`, `findmnt /usr`, and
+  # confirm the verity activation + tamper-detection paths.
+  #
+  # To be cleaned up once the homed-enablement PR (carved from #36)
+  # introduces proper per-user encrypted homes and a first-boot prompt.
+  users.users.root.initialPassword = "password";
 }
