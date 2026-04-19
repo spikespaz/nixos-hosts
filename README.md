@@ -19,11 +19,26 @@ Hosts include a WSL development environment and a bootable USB recovery image wi
 
 ### Building
 
-All variants are built from the `brdboot` NixOS configuration:
+Ephemeral, mutable, and sealed variants build directly from the
+`brdboot` NixOS configuration:
 
 ```
 nix build .#nixosConfigurations.brdboot.config.system.build.images.<variant>
 ```
+
+The `immutable` variant uses a three-stage verity pipeline
+(intermediate → UKI → final); the bootable artifact is the final
+stage, which the `system.build.finalImage` passthru exposes:
+
+```
+nix build .#nixosConfigurations.brdboot.config.system.build.images.immutable.passthru.config.system.build.finalImage
+```
+
+Substitute `brdboot-aarch64` for `brdboot` to target aarch64 instead
+of x86_64 (cross-built from the build host's arch).
+
+Each invocation produces a `result` symlink — that's what the flash
+script below expects.
 
 ### Flashing
 
