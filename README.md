@@ -42,36 +42,67 @@ script below expects.
 
 ### Flashing
 
-**Ephemeral (ISO):**
+Canonical procedure — `dd` with `conv=fsync`, then sync, then SHA-256
+verify the bytes that actually landed on the drive:
 
 ```
-sudo dd if=result/iso/*.iso of=/dev/sdX bs=4M status=progress conv=fsync
+./scripts/brdboot-flash.sh /dev/sdX               # auto-discover ./result/
+./scripts/brdboot-flash.sh /dev/sdX path/to.raw   # explicit image path
+```
+
+The script picks up the single image inside `./result` (either
+`result/*.raw` for GPT variants or `result/iso/*.iso` for ephemeral),
+flashes it, reads the device back, and exits non-zero on any mismatch
+with guidance pointing at common failure modes (weak flash cells,
+sustained-write degradation past the SLC cache, transient USB protocol
+errors). The script is `nix-shell`-shebanged, so `nix-shell` is the
+only host dependency.
+
+Skipping the verify step isn't recommended: consumer USB sticks
+routinely drop bits during sustained multi-GB writes without the flasher
+noticing. On the `immutable` variant the UKI cmdline carries
+`systemd.verity_usr_options=panic-on-corruption`, so any corrupted
+block read during boot turns into an immediate kernel panic — a loud
+signal, but one you'd rather catch in 10 seconds of host-side SHA-256
+check than mid-boot on the target hardware. On non-verity variants
+silent flash corruption is worse: files on disk just break
+unpredictably, with no kernel-level tripwire.
+
+**Manual equivalent if you prefer bare commands:**
+
+```
+# Ephemeral (ISO)
+sudo dd if=result/iso/*.iso of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 cmp <(sudo dd if=/dev/sdX bs=4M iflag=count_bytes count=$(stat -c%s result/iso/*.iso) 2>/dev/null) result/iso/*.iso && echo OK
-```
 
-On Windows, [Rufus](https://rufus.ie) detects the hybrid ISO and offers
-DD mode — select it.
-
-**GPT variants (mutable, immutable, sealed):**
-
-```
-sudo dd if=result/*.raw of=/dev/sdX bs=4M status=progress conv=fsync
+# GPT variants (mutable / immutable / sealed)
+sudo dd if=result/*.raw of=/dev/sdX bs=4M conv=fsync status=progress
 sync
 cmp <(sudo dd if=/dev/sdX bs=4M iflag=count_bytes count=$(stat -c%s result/*.raw) 2>/dev/null) result/*.raw && echo OK
 ```
 
-The `cmp` read-back is strongly recommended on `immutable` — the UKI
-cmdline carries `systemd.verity_usr_options=panic-on-corruption`, so
-any corrupted block read during boot turns into an immediate kernel
-panic. Catch it in ~10 seconds of host-side byte compare rather than
-mid-boot on the target. Skip only if you trust the drive and you'd
-rather reflash than verify; consumer USB sticks routinely drop bits
-during sustained multi-GB writes without the flasher noticing.
+**Windows (two paths):**
 
-On Windows, Rufus does not detect raw images automatically. Select
-"All files (\*.\*)" in the file picker to see `.raw` and `.img` files,
-then flash in DD mode (the only option for raw images).
+Option A — [Rufus](https://rufus.ie) in DD mode. Rufus detects the
+hybrid ISO and offers DD mode directly. For the `.raw` GPT variants
+Rufus doesn't auto-detect — select "All files (\*.\*)" in the file
+picker, then flash in DD mode (the only option for raw images).
+Straightforward, no WSL dependency, but doesn't verify after flash
+— fall back to the manual `cmp` block above if the drive is worth
+catching corruption on.
+
+Option B — WSL + the PowerShell wrapper, requires WSL installed:
+
+```
+.\scripts\brdboot-flash.ps1 -Disk <N>
+```
+
+The wrapper attaches `\\.\PHYSICALDRIVE<N>` to WSL via `wsl --mount
+--bare`, invokes `brdboot-flash.sh` inside WSL so the flash and
+SHA-256 verify run as on a native Linux host, and detaches on exit.
+Must be run in an elevated PowerShell. Find the disk number with
+`Get-Disk` in PowerShell.
 
 After flashing `immutable`, the USB drive has:
 
