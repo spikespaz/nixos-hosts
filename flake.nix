@@ -67,6 +67,8 @@
           tools = {
             brdboot-verify-image =
               pkgs.callPackage ./packages/brdboot-verify-image { };
+            brdboot-verify-self =
+              pkgs.callPackage ./packages/brdboot-verify-self { };
           };
           tests = lib.optionalAttrs (buildSystem == "x86_64-linux") {
             # Clean immutable image with 4 bytes flipped 4 KiB into
