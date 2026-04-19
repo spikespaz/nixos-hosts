@@ -94,17 +94,26 @@ catching corruption on.
 
 Option B — WSL + the PowerShell wrapper, requires WSL2 installed.
 Interactive by default (prompts to plug the USB in, confirms the
-wipe); pass `-Disk <N>` to skip the prompts:
+wipe); pass a device identifier to skip the prompts:
 
 ```
-gsudo .\scripts\brdboot-flash.ps1              # interactive
-gsudo .\scripts\brdboot-flash.ps1 -Disk <N>    # non-interactive
+gsudo .\scripts\brdboot-flash.ps1                 # interactive
+gsudo .\scripts\brdboot-flash.ps1 -BusId <N-N>    # non-interactive (usbipd path)
+gsudo .\scripts\brdboot-flash.ps1 -Disk <N>       # non-interactive (wsl --mount path)
 ```
 
-The wrapper attaches `\\.\PHYSICALDRIVE<N>` to WSL via `wsl --mount
---bare`, invokes `brdboot-flash.sh` inside WSL so the flash and
-SHA-256 verify run as on a native Linux host, and detaches the drive
-on exit.
+The wrapper attaches the USB to WSL, invokes `brdboot-flash.sh`
+inside WSL so the flash and SHA-256 verify run as on a native
+Linux host, and detaches on exit. Attach mechanism is chosen
+automatically:
+
+- **usbipd** (preferred) if [usbipd-win](https://github.com/dorssel/usbipd-win)
+  is installed on the host (`winget install dorssel.usbipd-win`). Works on
+  all Windows architectures and builds, including ARM64 hosts that predate
+  native `wsl --mount` support (build 27653+).
+- **wsl --mount --bare** (fallback) when usbipd isn't on PATH. Native
+  Hyper-V raw-disk attach, no extra tooling needed, but limited on older
+  ARM64 builds.
 
 `gsudo` is [a Windows sudo-equivalent](https://github.com/gerardog/gsudo)
 that elevates a single command without spawning a separate admin
