@@ -13,6 +13,23 @@
     # only takes effect when the initrd uses systemd.
     boot.initrd.systemd.enable = true;
 
+    # Fail loudly on any dm-verity corruption instead of silently with
+    # per-read EIO. Without this, a flashed drive with bad blocks (or
+    # an image tampered with offline) still boots as long as the bad
+    # blocks aren't on the critical boot path — the kernel returns
+    # EIO only for reads that touch corrupt blocks, and a dmesg scan
+    # is the only way to notice. A recovery image's whole value is
+    # integrity; make corruption an immediate visible kernel panic.
+    #
+    # OPTIONS syntax is comma-separated and ends up on the UKI
+    # cmdline as `systemd.verity_usr_options=...`; systemd-initrd's
+    # veritysetup-generator passes the value through to dm-verity's
+    # device table. See systemd-veritysetup-generator(8) and
+    # https://docs.kernel.org/admin-guide/device-mapper/verity.html
+    boot.kernelParams = [
+      "systemd.verity_usr_options=panic-on-corruption"
+    ];
+
     # UKI injection is handled by the verityStore module's finalImage override.
     # The module bakes the verity root hash into the UKI cmdline.
     #
