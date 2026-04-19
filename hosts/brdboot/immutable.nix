@@ -45,6 +45,14 @@
     {
       imports = [ ./portable-media-base.nix ];
 
+      # On-target self-check: reads /proc/cmdline's usrhash and runs
+      # veritysetup verify against the booted drive's brd-system /
+      # brd-system-verity partitions. Useful for distinguishing image-
+      # identity from storage-drift failure modes.
+      environment.systemPackages = [
+        (pkgs.callPackage ../../packages/brdboot-verify-self { })
+      ];
+
       system.image.id = "${config.system.nixos.distroId}-immutable";
     # Required for the verityStore module — it reads previousAttrs.pname
     # on the intermediate image derivation, and repart-image.nix only sets
