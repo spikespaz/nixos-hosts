@@ -1,0 +1,61 @@
+name: Test brdboot dm-verity
+
+# Separate from `Build brdboot images` because this workflow builds a
+# deliberately-tampered image (4-byte flip in brd-system after the
+# verity hash tree is computed, which is the input we need for an
+# end-to-end dm-verity panic test) that isn't a normal build artifact
+# we'd want on every push. Opt-in only.
+#
+# Triggers:
+#   - Manual (workflow_dispatch)
+#   - When a PR is labeled `dm-verity` (or while labeled, on subsequent
+#     pushes — the job's `if` gate filters non-labeled runs)
+#
+# Reuses the shared composite actions from `Build brdboot images`:
+#   nix-setup, nix-build, nix-cache-export.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  brdboot-verity-test:
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'dm-verity'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Same unshare sysctl workaround as the main build workflow —
+      # the tampered derivation's input is a finalImage, which
+      # runs `systemd-repart` and needs user namespaces.
+      - name: Enable unprivileged user namespaces
+        run: |
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 2>/dev/null || true
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 2>/dev/null || true
+
+      - uses: ./.github/actions/nix-setup
+        with:
+          # Share the cache bucket with the main brdboot-x86_64 job
+          # so the clean intermediate + UKI + finalImage get pulled
+          # from cache rather than rebuilt. The byte-flip is the only
+          # unique work this job does on top of the shared closure.
+          cache-name: brdboot-x86_64
+
+      - name: brdboot-immutable-tampered-brd-system
+        uses: ./.github/actions/nix-build
+        with:
+          attr: packages.x86_64-linux.brdboot-immutable-tampered-brd-system
+          artifact-name: brdboot-immutable-tampered-brd-system
+          artifact-path: result-brdboot-immutable-tampered-brd-system/*.raw
+
+      - name: Export binary cache
+        uses: ./.github/actions/nix-cache-export
+        if: always()
+        with:
+          cache-max-mb: "2048"
