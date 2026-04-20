@@ -1,13 +1,14 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-release.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixos-wsl = {
       url = "github:nix-community/NixOS-WSL/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nixos-wsl, ... }:
+  outputs = { self, nixpkgs, nixpkgs-release, nixos-wsl, ... }:
     let
       inherit (nixpkgs) lib;
       eachSystem = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
@@ -114,6 +115,20 @@
                       seek="$seekBytes" oflag=seek_bytes conv=notrunc
                 echo "tamper landed"
               '';
+
+            # Clean immutable image rebuilt with the initrd's systemd
+            # swapped to an older release. /usr is unchanged, so
+            # dm-verity and the UKI cmdline still agree — the tamper
+            # lives entirely in the initrd, which dm-verity doesn't
+            # cover.
+            brdboot-immutable-tampered-initrd =
+              (self.nixosConfigurations.brdboot.extendModules {
+                modules = [{
+                  boot.initrd.systemd.package = lib.mkForce
+                    nixpkgs-release.legacyPackages.${buildSystem}.systemd;
+                }];
+              }).config.system.build.images.immutable
+                .passthru.config.system.build.finalImage;
           };
         in native // cross // tools // tests) pkgsFor;
 
