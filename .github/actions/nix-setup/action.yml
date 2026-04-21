@@ -13,11 +13,21 @@ inputs:
 runs:
   using: composite
   steps:
+    # Install the post-build-hook at a fixed path with +x so Nix can
+    # exec it. The hook appends $OUT_PATHS to /tmp/nix-built-paths.log,
+    # which nix-cache-export consumes to learn what to copy.
+    - name: Install post-build-hook
+      shell: bash
+      run: |
+        install -m 0755 '${{ github.action_path }}/post-build-hook.sh' /tmp/nix-post-build-hook.sh
+        : > /tmp/nix-built-paths.log
+
     - uses: nixbuild/nix-quick-install-action@v32
       with:
         nix_conf: |
           pure-eval = true
           allow-import-from-derivation = false
+          post-build-hook = /tmp/nix-post-build-hook.sh
           ${{ inputs.nix-conf }}
 
     # Restore only; the save half lives in nix-cache-export so it can

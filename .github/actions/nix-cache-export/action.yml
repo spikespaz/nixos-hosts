@@ -18,42 +18,33 @@ runs:
       shell: bash
       run: |
         LOCAL_CACHE="/tmp/nix-binary-cache"
+        LOG=/tmp/nix-built-paths.log
         mkdir -p "$LOCAL_CACHE"
 
-        # Walk the build-time closure of each result symlink's
-        # deriver and copy it, minus the top-level outputs (which
-        # already ship as artifacts). `nix path-info --recursive`
-        # would give only the runtime closure, which is empty for
-        # a .raw image.
+        # Copy the paths Nix realized during this job (logged by the
+        # post-build-hook) minus the top-level outputs, which ship as
+        # artifacts and don't need cache space. Restored-from-cache
+        # paths never enter the log, so the copy sees only what's
+        # genuinely new and skips the closure-wide presence sweep.
         exclude_file=$(mktemp)
         trap 'rm -f "$exclude_file"' EXIT
-
-        drvs=()
         for link in result result-*; do
-          if [ ! -L "$link" ]; then continue; fi
-          readlink -f "./$link" >> "$exclude_file"
-          drv=$(nix-store --query --deriver "./$link" 2>/dev/null || true)
-          if [ -n "$drv" ] && [ "$drv" != "unknown-deriver" ]; then
-            drvs+=("$drv")
-          fi
+          [ -L "$link" ] && readlink -f "./$link" >> "$exclude_file"
         done
 
         exported=false
-        if [ "${#drvs[@]}" -eq 0 ]; then
-          echo "No result symlinks with derivers found — nothing to export."
+        if [ ! -s "$LOG" ]; then
+          echo "No paths realized during this job — nothing to export."
         else
-          echo "Collecting build-time closure of ${#drvs[@]} deriver(s)..."
-          paths=$(nix-store --query --requisites --include-outputs \
-              "${drvs[@]}" 2>/dev/null \
-            | grep -Fxvf "$exclude_file" || true)
+          paths=$(sort -u "$LOG" | grep -Fxvf "$exclude_file" || true)
           if [ -n "$paths" ]; then
             count=$(echo "$paths" | wc -l)
             echo "Copying $count path(s) to $LOCAL_CACHE..."
             # shellcheck disable=SC2086
-            nix copy --to "file://$LOCAL_CACHE" $paths 2>/dev/null || true
+            nix copy --to "file://$LOCAL_CACHE" $paths || true
             exported=true
           else
-            echo "Build-time closure was empty after excluding top-level outputs."
+            echo "All realized paths were top-level outputs — nothing to export."
           fi
         fi
         echo "exported=$exported" >> "$GITHUB_OUTPUT"
