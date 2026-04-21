@@ -57,3 +57,5 @@ jobs:
       - name: Export binary cache
         uses: ./.github/actions/nix-cache-export
         if: always()
+        with:
+          cache-name: brdboot-x86_64
