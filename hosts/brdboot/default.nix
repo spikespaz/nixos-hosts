@@ -87,6 +87,10 @@
 
     # Multi-pass secure disk wipe (DoD 5220.22-M, Gutmann, PRNG).
     nwipe
+
+    # ATA/SATA control: `hdparm -I` dumps identify block;
+    # `--security-erase` triggers native ATA secure-erase on SSDs.
+    hdparm
   ];
 
   nix.settings = {
