@@ -75,6 +75,10 @@
 
     # SMART disk health: `smartctl -a /dev/sdX` triages drive failures.
     smartmontools
+
+    # NTFS userspace: `ntfsfix` clears dirty bit, `ntfsundelete`
+    # recovers MFT entries — offline complement to kernel ntfs3.
+    ntfs3g
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
