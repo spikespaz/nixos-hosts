@@ -79,6 +79,9 @@
     # NTFS userspace: `ntfsfix` clears dirty bit, `ntfsundelete`
     # recovers MFT entries — offline complement to kernel ntfs3.
     ntfs3g
+
+    # Multi-pass secure disk wipe (DoD 5220.22-M, Gutmann, PRNG).
+    nwipe
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
