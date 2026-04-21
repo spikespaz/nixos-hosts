@@ -58,17 +58,32 @@ runs:
           if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
             echo "Pruning oldest NARs..."
             while [ "$(du -sm "$LOCAL_CACHE" | cut -f1)" -gt "$CACHE_MAX_MB" ]; do
-              oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' -printf '%T+ %p\n' \
-                2>/dev/null | sort 2>/dev/null | head -1 | cut -d' ' -f2)
+              # awk not head: head closes the pipe early, SIGPIPE
+              # on sort propagates via pipefail as a non-zero exit.
+              oldest=$(find "$LOCAL_CACHE/nar" -name '*.nar.*' \
+                  -printf '%T+ %p\n' 2>/dev/null \
+                | sort \
+                | awk 'NR==1 {print $2}') || oldest=""
               if [ -z "$oldest" ]; then break; fi
               rm -f "$oldest"
             done
+            # Drop narinfo stubs whose NAR was evicted.
             for ni in "$LOCAL_CACHE"/*.narinfo; do
-              nar_url=$(grep "^URL:" "$ni" 2>/dev/null | sed 's|^URL: ||')
+              [ -f "$ni" ] || continue
+              nar_url=$(grep '^URL:' "$ni" | sed 's|^URL: ||') || nar_url=""
               if [ -n "$nar_url" ] && [ ! -f "$LOCAL_CACHE/$nar_url" ]; then
                 rm -f "$ni"
               fi
             done
-            echo "Cache after pruning: $(du -sm "$LOCAL_CACHE" | cut -f1)MB"
+            cache_mb=$(du -sm "$LOCAL_CACHE" | cut -f1)
+            echo "Cache after pruning: ${cache_mb}MB"
+            # Fail loud if prune couldn't catch up, with a hint for
+            # bumping the budget.
+            if [ "$cache_mb" -gt "$CACHE_MAX_MB" ]; then
+              suggested=$(( (cache_mb / 1024 + 2) * 1024 ))
+              echo "::error::Cache size ${cache_mb}MB still exceeds budget ${CACHE_MAX_MB}MB after pruning."
+              echo "::error::Bump \`cache-max-mb\` input to at least ${suggested}, or reduce the closure."
+              exit 1
+            fi
           fi
         fi
