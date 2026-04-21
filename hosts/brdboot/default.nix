@@ -91,6 +91,10 @@
     # ATA/SATA control: `hdparm -I` dumps identify block;
     # `--security-erase` triggers native ATA secure-erase on SSDs.
     hdparm
+
+    # In NixOS defaults; listed for `blkdiscard(8)` (TRIM erasure) and
+    # `wipefs(8)` (strip filesystem signatures).
+    util-linux
   ];
 
   nix.settings = {
