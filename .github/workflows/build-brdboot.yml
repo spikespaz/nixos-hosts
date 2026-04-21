@@ -79,13 +79,10 @@ jobs:
           artifact-path: result-sealed-x86_64-linux/*.raw
 
       # Export all build closures (excluding the images themselves) to
-      # a local binary cache for the next run. Budget: 2GB covers the
-      # shared dependency closure across all four variants.
+      # a local binary cache for the next run.
       - name: Export binary cache
         uses: ./.github/actions/nix-cache-export
         if: always()
-        with:
-          cache-max-mb: "2048"
 
   brd-portable-aarch64:
     if: >-
@@ -109,5 +106,3 @@ jobs:
 
       - uses: ./.github/actions/nix-cache-export
         if: always()
-        with:
-          cache-max-mb: "2048"
