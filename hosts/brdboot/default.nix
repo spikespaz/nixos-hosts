@@ -69,6 +69,9 @@
   environment.systemPackages = with pkgs; [
     hfsprogs  # mkfs.hfsplus, fsck.hfsplus
     udftools  # mkudffs, udfinfo, udflabel
+
+    # Partition-table reconstruction (`testdisk`) + file carving (`photorec`).
+    testdisk
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
