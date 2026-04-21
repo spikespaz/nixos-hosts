@@ -72,6 +72,9 @@
 
     # Partition-table reconstruction (`testdisk`) + file carving (`photorec`).
     testdisk
+
+    # SMART disk health: `smartctl -a /dev/sdX` triages drive failures.
+    smartmontools
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
