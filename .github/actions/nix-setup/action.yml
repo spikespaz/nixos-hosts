@@ -20,7 +20,9 @@ runs:
           allow-import-from-derivation = false
           ${{ inputs.nix-conf }}
 
-    - uses: actions/cache@v4
+    # Restore only; the save half lives in nix-cache-export so it can
+    # be gated on whether any new paths were actually copied.
+    - uses: actions/cache/restore@v4
       id: cache
       with:
         path: /tmp/nix-binary-cache

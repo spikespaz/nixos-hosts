@@ -2,6 +2,9 @@ name: Nix Cache Export
 description: Export nix store closures to local binary cache with budget pruning
 
 inputs:
+  cache-name:
+    description: "Cache key prefix — must match the value passed to nix-setup"
+    required: true
   cache-max-mb:
     description: "Max binary cache size in MB before LRU-by-write prune engages (0 = no limit)"
     required: false
@@ -11,6 +14,7 @@ runs:
   using: composite
   steps:
     - name: Export closures to local cache
+      id: export
       shell: bash
       run: |
         LOCAL_CACHE="/tmp/nix-binary-cache"
@@ -34,6 +38,7 @@ runs:
           fi
         done
 
+        exported=false
         if [ "${#drvs[@]}" -eq 0 ]; then
           echo "No result symlinks with derivers found — nothing to export."
         else
@@ -46,10 +51,12 @@ runs:
             echo "Copying $count path(s) to $LOCAL_CACHE..."
             # shellcheck disable=SC2086
             nix copy --to "file://$LOCAL_CACHE" $paths 2>/dev/null || true
+            exported=true
           else
             echo "Build-time closure was empty after excluding top-level outputs."
           fi
         fi
+        echo "exported=$exported" >> "$GITHUB_OUTPUT"
 
         CACHE_MAX_MB=${{ inputs.cache-max-mb }}
         if [ "$CACHE_MAX_MB" -gt 0 ] 2>/dev/null; then
@@ -87,3 +94,13 @@ runs:
             fi
           fi
         fi
+
+    # Skip the save when nothing was exported — otherwise we'd write
+    # an empty cache under this sha's key and poison restore-keys
+    # prefix matching on the next run.
+    - name: Save cache
+      if: steps.export.outputs.exported == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: /tmp/nix-binary-cache
+        key: nix-${{ inputs.cache-name }}-${{ github.sha }}
