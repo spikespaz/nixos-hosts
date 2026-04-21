@@ -16,14 +16,40 @@ runs:
         LOCAL_CACHE="/tmp/nix-binary-cache"
         mkdir -p "$LOCAL_CACHE"
 
+        # Walk the build-time closure of each result symlink's
+        # deriver and copy it, minus the top-level outputs (which
+        # already ship as artifacts). `nix path-info --recursive`
+        # would give only the runtime closure, which is empty for
+        # a .raw image.
+        exclude_file=$(mktemp)
+        trap 'rm -f "$exclude_file"' EXIT
+
+        drvs=()
         for link in result result-*; do
           if [ ! -L "$link" ]; then continue; fi
-          echo "Exporting closure for $link..."
-          for path in $(nix path-info --recursive "./$link" 2>/dev/null \
-              | grep -v "$(readlink -f "./$link")"); do
-            nix copy --to "file://$LOCAL_CACHE" "$path" 2>/dev/null || true
-          done
+          readlink -f "./$link" >> "$exclude_file"
+          drv=$(nix-store --query --deriver "./$link" 2>/dev/null || true)
+          if [ -n "$drv" ] && [ "$drv" != "unknown-deriver" ]; then
+            drvs+=("$drv")
+          fi
         done
+
+        if [ "${#drvs[@]}" -eq 0 ]; then
+          echo "No result symlinks with derivers found — nothing to export."
+        else
+          echo "Collecting build-time closure of ${#drvs[@]} deriver(s)..."
+          paths=$(nix-store --query --requisites --include-outputs \
+              "${drvs[@]}" 2>/dev/null \
+            | grep -Fxvf "$exclude_file" || true)
+          if [ -n "$paths" ]; then
+            count=$(echo "$paths" | wc -l)
+            echo "Copying $count path(s) to $LOCAL_CACHE..."
+            # shellcheck disable=SC2086
+            nix copy --to "file://$LOCAL_CACHE" $paths 2>/dev/null || true
+          else
+            echo "Build-time closure was empty after excluding top-level outputs."
+          fi
+        fi
 
         CACHE_MAX_MB=${{ inputs.cache-max-mb }}
         if [ "$CACHE_MAX_MB" -gt 0 ] 2>/dev/null; then
