@@ -3,9 +3,9 @@ description: Export nix store closures to local binary cache with budget pruning
 
 inputs:
   cache-max-mb:
-    description: "Max binary cache size in MB (0 = no limit)"
+    description: "Max binary cache size in MB before LRU-by-write prune engages (0 = no limit)"
     required: false
-    default: "2048"
+    default: "6144"
 
 runs:
   using: composite
