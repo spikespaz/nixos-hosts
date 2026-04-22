@@ -29,8 +29,16 @@ runs:
       shell: bash
       run: |
         drv_path=$(nix eval --raw '.#${{ inputs.attr }}.drvPath' 2>/dev/null || echo "unknown")
-        drv_hash=$(basename "$drv_path" | cut -d'-' -f1)
+        drv_base=$(basename "$drv_path" .drv)
+        drv_hash=${drv_base%%-*}
+        drv_name=${drv_base#*-}
+        case '${{ inputs.artifact-path }}' in
+          *.iso) ext=.iso ;;
+          *.raw) ext=.raw ;;
+          *)     ext= ;;
+        esac
         echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
+        echo "filename=$drv_name$ext" >> "$GITHUB_OUTPUT"
         echo "Cache key: drv-$drv_hash"
 
     - name: Check for existing artifact
@@ -86,12 +94,13 @@ runs:
       shell: bash
       run: |
         name='${{ inputs.artifact-name }}'
+        filename='${{ steps.drv-hash.outputs.filename }}'
         summary="$GITHUB_STEP_SUMMARY"
         echo "### $name" >> "$summary"
         if [ "${{ steps.check-existing.outputs.skipped }}" = "true" ]; then
-          echo "Deduplicated: [$name](${{ steps.check-existing.outputs.dedup-url }})" >> "$summary"
+          echo "Deduplicated: [$filename](${{ steps.check-existing.outputs.dedup-url }})" >> "$summary"
         elif [ "${{ steps.upload.outcome }}" = "success" ]; then
-          echo "Built: [$name](${{ steps.upload.outputs.artifact-url }})" >> "$summary"
+          echo "Built: [$filename](${{ steps.upload.outputs.artifact-url }})" >> "$summary"
         else
           echo "Build failed." >> "$summary"
         fi
