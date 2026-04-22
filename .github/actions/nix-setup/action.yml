@@ -47,13 +47,20 @@ runs:
     - name: Import from local cache
       shell: bash
       run: |
+        summary="$GITHUB_STEP_SUMMARY"
+        matched='${{ steps.cache.outputs.cache-matched-key }}'
+        primary='${{ steps.cache.outputs.cache-primary-key }}'
+        hit='${{ steps.cache.outputs.cache-hit }}'
+        echo "### Binary cache" >> "$summary"
         if [ -f "/tmp/nix-binary-cache/nix-cache-info" ]; then
           echo "Importing from local binary cache..."
           nix copy --option max-substitution-jobs ${{ inputs.nix-copy-jobs }} --from "file:///tmp/nix-binary-cache" --all --no-check-sigs || true
-          echo "### Binary cache" >> "$GITHUB_STEP_SUMMARY"
-          echo "Restored from \`nix-${{ inputs.cache-name }}\`." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$hit" = "true" ]; then
+            echo "Restored from \`$matched\` (exact match)." >> "$summary"
+          else
+            echo "Primary key \`$primary\` missed; restored from \`$matched\` via \`restore-keys\` fallback." >> "$summary"
+          fi
         else
           echo "No local cache found."
-          echo "### Binary cache" >> "$GITHUB_STEP_SUMMARY"
-          echo "Cold start — no prior cache for \`nix-${{ inputs.cache-name }}\`." >> "$GITHUB_STEP_SUMMARY"
+          echo "Cold start — no match for primary key \`$primary\` or prefix \`nix-${{ inputs.cache-name }}-\`." >> "$summary"
         fi
