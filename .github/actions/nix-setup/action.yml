@@ -9,6 +9,10 @@ inputs:
     description: "Extra nix.conf lines (appended to defaults)"
     required: false
     default: ""
+  nix-copy-jobs:
+    description: "Parallelism for `nix copy --from` (passed as `--option max-substitution-jobs`). Default matches the 4 vCPUs on standard public-repo GHA runners."
+    required: false
+    default: "4"
 
 runs:
   using: composite
@@ -45,7 +49,7 @@ runs:
       run: |
         if [ -f "/tmp/nix-binary-cache/nix-cache-info" ]; then
           echo "Importing from local binary cache..."
-          nix copy --from "file:///tmp/nix-binary-cache" --all --no-check-sigs 2>/dev/null || true
+          nix copy --option max-substitution-jobs ${{ inputs.nix-copy-jobs }} --from "file:///tmp/nix-binary-cache" --all --no-check-sigs || true
           echo "### Binary cache" >> "$GITHUB_STEP_SUMMARY"
           echo "Restored from \`nix-${{ inputs.cache-name }}\`." >> "$GITHUB_STEP_SUMMARY"
         else

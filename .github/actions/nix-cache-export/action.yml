@@ -9,6 +9,10 @@ inputs:
     description: "Max binary cache size in MB before LRU-by-write prune engages (0 = no limit)"
     required: false
     default: "6144"
+  nix-copy-jobs:
+    description: "Parallelism for `nix copy` (passed as `--option max-substitution-jobs`). Default matches the 4 vCPUs on standard public-repo GHA runners."
+    required: false
+    default: "4"
 
 runs:
   using: composite
@@ -41,7 +45,7 @@ runs:
             count=$(echo "$paths" | wc -l)
             echo "Copying $count path(s) to $LOCAL_CACHE..."
             # shellcheck disable=SC2086
-            nix copy --to "file://$LOCAL_CACHE?compression=zstd" $paths || true
+            nix copy --option max-substitution-jobs ${{ inputs.nix-copy-jobs }} --to "file://$LOCAL_CACHE?compression=zstd" $paths || true
             exported=true
           else
             echo "All realized paths were top-level outputs — nothing to export."
