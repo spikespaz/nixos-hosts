@@ -36,6 +36,12 @@ runs:
           [ -L "$link" ] && readlink -f "./$link" >> "$exclude_file"
         done
 
+        # Count narinfo files before and after the copy to derive how
+        # many paths nix-copy actually added vs presence-check-skipped.
+        # The narinfo file is the authoritative marker for "this path
+        # is in the cache," so the delta is an exact measurement.
+        count_narinfos() { find "$LOCAL_CACHE" -maxdepth 1 -name '*.narinfo' 2>/dev/null | wc -l; }
+
         exported=false
         if [ ! -s "$LOG" ]; then
           echo "No paths realized during this job — nothing to export."
@@ -44,9 +50,12 @@ runs:
           if [ -n "$paths" ]; then
             count=$(echo "$paths" | wc -l)
             echo "Copying $count path(s) to $LOCAL_CACHE..."
+            before=$(count_narinfos)
             # shellcheck disable=SC2086
             nix copy --option max-substitution-jobs ${{ inputs.nix-copy-jobs }} --to "file://$LOCAL_CACHE?compression=zstd" $paths || true
-            exported=true
+            net=$(( $(count_narinfos) - before ))
+            echo "Net: $net new path(s) written to cache."
+            [ "$net" -gt 0 ] && exported=true
           else
             echo "All realized paths were top-level outputs — nothing to export."
           fi
