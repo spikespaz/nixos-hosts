@@ -41,7 +41,7 @@ runs:
             count=$(echo "$paths" | wc -l)
             echo "Copying $count path(s) to $LOCAL_CACHE..."
             # shellcheck disable=SC2086
-            nix copy --to "file://$LOCAL_CACHE" $paths || true
+            nix copy --to "file://$LOCAL_CACHE?compression=zstd" $paths || true
             exported=true
           else
             echo "All realized paths were top-level outputs — nothing to export."
