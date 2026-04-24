@@ -48,7 +48,7 @@
       config.system.image.version
   ));
 
-  image.repart.partitions."brd-esp" = {
+  image.repart.partitions."00-brd-esp" = {
     contents =
       let
         efiArch = pkgs.stdenv.hostPlatform.efiArch;

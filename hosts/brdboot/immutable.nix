@@ -85,10 +85,18 @@
     # https://uapi-group.org/specifications/specs/discoverable_partitions_specification/
     image.repart.verityStore = {
       enable = true;
+      # Numeric prefix controls repart.d filename sort order (→ GPT
+      # layout position). partitionIds tells verityStore which attr
+      # keys to apply its defaults to (Type, Verity=, VerityMatchKey)
+      # — must match the prefixed attr names we declare below or the
+      # module attaches defaults to its built-in names ("00-esp",
+      # "10-store-verity", "20-store") and we end up with parallel
+      # partitions instead of override-merging into ours.
+      # https://github.com/NixOS/nixpkgs/blob/8110df5ad7abf5d4c0f6fb0f8f978390e77f9685/nixos/modules/image/repart-verity-store.nix#L58-L80
       partitionIds = {
-        esp = "brd-esp";
-        store-verity = "brd-system-verity";
-        store = "brd-system";
+        esp = "00-brd-esp";
+        store-verity = "10-brd-system-verity";
+        store = "20-brd-system";
       };
     };
 
@@ -96,7 +104,7 @@
     # will later use for the real UKI, so Minimize="guess" from
     # portable-media-base sizes the partition correctly at intermediate
     # time. See the sizingUki let-binding above for the full rationale.
-    image.repart.partitions."brd-esp".contents = {
+    image.repart.partitions."00-brd-esp".contents = {
       "${config.image.repart.verityStore.ukiPath}".source =
         "${sizingUki}/${ukiFile}";
     };
@@ -106,17 +114,19 @@
     # this, the verity data/hash partitions get a near-empty default size and
     # the build fails with "contents don't fit in the partition".
     image.repart.partitions = {
-      "brd-system".repartConfig = {
+      "20-brd-system".repartConfig = {
         Label = lib.mkImageMediaOverride "brd-system";
         Minimize = "best";
       };
-      "brd-system-verity".repartConfig = {
+      "10-brd-system-verity".repartConfig = {
         Label = lib.mkImageMediaOverride "brd-system-verity";
         Minimize = "best";
       };
-      "brd-persist" = {
+      "90-brd-persist" = {
         # Minimum GPT-aligned reservation; systemd-repart extends it
-        # into trailing free space on first boot.
+        # into trailing free space on first boot. The "90-" prefix
+        # pins this partition last in the GPT (filename sort), so
+        # trailing free space is adjacent and grow can claim it.
         repartConfig = {
           Type = "linux-generic";
           SizeMinBytes = "1M";

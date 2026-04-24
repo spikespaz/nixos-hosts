@@ -6,7 +6,7 @@
     system.image.version = lib.mkDefault "1";
 
     # UKI injection into ESP (see note in portable-media-base.nix).
-    image.repart.partitions."brd-esp".contents."/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
+    image.repart.partitions."00-brd-esp".contents."/EFI/Linux/${config.system.boot.loader.ukiFile}".source =
       "${config.system.build.uki}/${config.system.boot.loader.ukiFile}";
 
     # Grow brd-persist to fill available space on first boot.
@@ -38,7 +38,7 @@
     #
     # At boot, the initrd prompts for the LUKS passphrase via
     # boot.initrd.luks.devices."brd-system" (defined above).
-    image.repart.partitions."brd-system" = {
+    image.repart.partitions."20-brd-system" = {
       storePaths = [ config.system.build.toplevel ];
       repartConfig = {
         Type = "linux-generic";
@@ -48,9 +48,11 @@
         Label = "brd-system";
       };
     };
-    image.repart.partitions."brd-persist" = {
+    image.repart.partitions."90-brd-persist" = {
       # Minimum GPT-aligned reservation; systemd-repart extends it
-      # into trailing free space on first boot.
+      # into trailing free space on first boot. The "90-" prefix
+      # pins this partition last in the GPT (filename sort), so
+      # trailing free space is adjacent and grow can claim it.
       repartConfig = {
         Type = "linux-generic";
         SizeMinBytes = "1M";
