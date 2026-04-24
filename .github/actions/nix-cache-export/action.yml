@@ -108,3 +108,21 @@ runs:
       with:
         path: /tmp/nix-binary-cache
         key: nix-${{ inputs.cache-name }}-${{ github.sha }}
+
+    # Counterpart to the pre-build snapshot in nix-setup. Compare
+    # root vs /mnt usage after the build+export to confirm the
+    # bind-mount captured the bulk of the footprint and to surface
+    # remaining headroom trends over time.
+    - name: Disk layout (post-build)
+      if: always()
+      shell: bash
+      run: |
+        summary="$GITHUB_STEP_SUMMARY"
+        echo "### Disk layout (post-build)" >> "$summary"
+        for mp in / /mnt; do
+          if [ -d "$mp" ]; then
+            used=$(df -h --output=used "$mp" | tail -1 | tr -d ' ')
+            avail=$(df -h --output=avail "$mp" | tail -1 | tr -d ' ')
+            echo "\`$mp\` used: $used &middot; free: $avail" >> "$summary"
+          fi
+        done

@@ -26,6 +26,31 @@ runs:
         install -m 0755 '${{ github.action_path }}/post-build-hook.sh' /tmp/nix-post-build-hook.sh
         : > /tmp/nix-built-paths.log
 
+    # Hosted GHA runners expose ~14 GB free on / but ~70 GB on /mnt
+    # (the Azure VM's ephemeral data disk). Full multi-variant brdboot
+    # closures plus systemd-repart/mkfs scratch can hit ENOSPC on /
+    # (observed 2026-04 on build-brdboot sealed variant, run 24873426263
+    # at 62abf63). Bind-mount /mnt/nix → /nix before nix-quick-install
+    # lays the store down so /nix/store and build scratch live on the
+    # larger disk. Degrade cleanly on runner configurations that lack
+    # a writable /mnt instead of failing the job.
+    - name: Move /nix to /mnt for disk headroom
+      shell: bash
+      run: |
+        summary="$GITHUB_STEP_SUMMARY"
+        echo "### Disk layout (pre-build)" >> "$summary"
+        root_avail=$(df -h --output=avail / | tail -1 | tr -d ' ')
+        if [ -d /mnt ] && sudo test -w /mnt; then
+          sudo mkdir -p /mnt/nix /nix
+          sudo mount --bind /mnt/nix /nix
+          sudo chown "$(id -u):$(id -g)" /nix
+          mnt_avail=$(df -h --output=avail /mnt | tail -1 | tr -d ' ')
+          echo "Bind-mounted \`/mnt/nix\` → \`/nix\`." >> "$summary"
+          echo "\`/\` free: $root_avail &middot; \`/mnt\` free: $mnt_avail" >> "$summary"
+        else
+          echo "No writable \`/mnt\` — nix store stays on \`/\` ($root_avail free)." >> "$summary"
+        fi
+
     - uses: nixbuild/nix-quick-install-action@v32
       with:
         nix_conf: |
