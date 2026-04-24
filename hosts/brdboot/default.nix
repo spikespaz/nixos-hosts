@@ -99,6 +99,11 @@
     # GPT table inspection and repair: `sgdisk -p /dev/sdX` prints the
     # table, `--verify` checks CRCs + backup header, `-o` zeros it.
     gptfdisk
+
+    # LUKS open/format and dm-verity verify/dump (`cryptsetup`,
+    # `veritysetup`). Inspects encrypted or verity-protected recovery
+    # targets in place — sealed brd-system, immutable hash trees.
+    cryptsetup
   ];
 
   nix.settings = {
