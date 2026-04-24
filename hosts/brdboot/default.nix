@@ -90,6 +90,10 @@
     # In NixOS defaults; listed for `blkdiscard(8)` (TRIM erasure) and
     # `wipefs(8)` (strip filesystem signatures).
     util-linux
+
+    # GPT table inspection and repair: `sgdisk -p /dev/sdX` prints the
+    # table, `--verify` checks CRCs + backup header, `-o` zeros it.
+    gptfdisk
   ];
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
