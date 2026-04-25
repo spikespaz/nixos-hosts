@@ -3,7 +3,7 @@
 
 # brdboot-flash.sh — canonical flash + verify for brdboot images.
 #
-# Usage: scripts/brdboot-flash.sh /dev/sdX [image]
+# Usage: scripts/brdboot-flash.sh [--strict] /dev/sdX [image]
 #
 # With no image argument, expects a `./result` symlink or directory in
 # the current working directory (as produced by nix build) and picks
@@ -20,6 +20,15 @@
 # Flashes to the target block device with conv=fsync, syncs the
 # kernel page cache, reads the device back, and compares SHA-256
 # hashes byte-for-byte against the source.
+#
+# --strict mode swaps bs=4M conv=fsync for bs=1M oflag=direct,sync
+# conv=fsync,fdatasync — kernel hands buffers straight to the block
+# device with no page-cache layer, and every write call blocks until
+# the drive acknowledges. Slower (~2-3×) but reduces the window where
+# cheap drives can buffer-and-lose writes. Use when the default has
+# produced hash mismatches even after eject/replug, or when boot
+# fails on a drive whose post-flash hash matches (suggests dm-verity
+# is hitting a write-pattern not exposed by sequential cmp readback).
 #
 # Hash mismatch means the flash landed corrupt bytes on the stick —
 # a common failure mode on cheap or aging USB drives (SLC cache
@@ -39,7 +48,11 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<EOF
-usage: $0 /dev/sdX [image]
+usage: $0 [--strict] /dev/sdX [image]
+
+  --strict  use stricter dd flags (bs=1M, oflag=direct,sync,
+            conv=fsync,fdatasync) for hardened writes on cheap or
+            UAS-quirky USB drives. Slower but more reliable.
 
   /dev/sdX  block device to flash
   image     optional path to a .raw or .iso image. when omitted,
@@ -48,6 +61,16 @@ usage: $0 /dev/sdX [image]
 EOF
   exit 1
 }
+
+STRICT=0
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --strict) STRICT=1; shift ;;
+    -h|--help) usage ;;
+    -*) echo "error: unknown option: $1" >&2; usage ;;
+    *) break ;;  # positional args follow
+  esac
+done
 
 [[ $# -ge 1 && $# -le 2 ]] || usage
 TARGET=$1
@@ -91,12 +114,20 @@ else
 fi
 SIZE=$(stat -c%s "$IMAGE")
 
-echo "flashing $IMAGE ($SIZE bytes) -> $TARGET"
+if (( STRICT )); then
+  echo "flashing $IMAGE ($SIZE bytes) -> $TARGET (strict mode)"
+  DD_FLAGS=(bs=1M oflag=direct,sync conv=fsync,fdatasync status=progress)
+else
+  echo "flashing $IMAGE ($SIZE bytes) -> $TARGET"
+  DD_FLAGS=(bs=4M conv=fsync status=progress)
+fi
 # dd's status=progress stops updating once all bytes are handed to the
 # kernel, then `conv=fsync` blocks at close waiting for the drive to
 # ack the write — on a slow USB stick this can sit at 100% for a
-# minute or more. That's normal; let it finish.
-sudo dd if="$IMAGE" of="$TARGET" bs=4M conv=fsync status=progress
+# minute or more. That's normal; let it finish. Strict mode is even
+# slower because every write call blocks on the drive's ack, not just
+# the close.
+sudo dd if="$IMAGE" of="$TARGET" "${DD_FLAGS[@]}"
 sync
 
 echo
@@ -124,9 +155,11 @@ else
 FAIL: hash mismatch — the bytes on $TARGET do not match $IMAGE.
 
 Next steps:
-  1. Try a different USB port / cable (transient protocol error?)
-  2. Try a different USB stick (weak cells / fake capacity?)
-  3. nix shell nixpkgs#f3 -c f3probe --destructive $TARGET
+  1. Re-flash with --strict (slower writes, fewer drive-side bugs):
+     $0 --strict $TARGET${IMAGE:+ $IMAGE}
+  2. Try a different USB port / cable (transient protocol error?)
+  3. Try a different USB stick (weak cells / fake capacity?)
+  4. nix shell nixpkgs#f3 -c f3probe --destructive $TARGET
 EOF
   exit 2
 fi
