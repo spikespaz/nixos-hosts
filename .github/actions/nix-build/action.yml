@@ -50,8 +50,8 @@ runs:
       run: |
         artifact_name="${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}"
         existing=$(gh api "repos/${{ github.repository }}/actions/artifacts?name=$artifact_name" \
-          --jq '.artifacts[] | select(.expired == false) | .id' \
-          2>/dev/null | head -1)
+          --jq '[.artifacts[] | select(.expired == false) | .id][0] // empty' \
+          2>/dev/null)
         if [ -n "$existing" ]; then
           run_id=$(gh api "repos/${{ github.repository }}/actions/artifacts/$existing" \
             --jq '.workflow_run.id' 2>/dev/null)
