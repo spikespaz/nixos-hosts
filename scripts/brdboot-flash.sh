@@ -1,9 +1,9 @@
 #!/usr/bin/env nix-shell
-#!nix-shell -i bash -p bash coreutils gawk
+#!nix-shell -i bash -p bash coreutils gawk pv
 
 # brdboot-flash.sh — canonical flash + verify for brdboot images.
 #
-# Usage: scripts/brdboot-flash.sh [--strict] /dev/sdX [image]
+# Usage: scripts/brdboot-flash.sh [--strict] [--rate=N] /dev/sdX [image]
 #
 # With no image argument, expects a `./result` symlink or directory in
 # the current working directory (as produced by nix build) and picks
@@ -30,6 +30,13 @@
 # fails on a drive whose post-flash hash matches (suggests dm-verity
 # is hitting a write-pattern not exposed by sequential cmp readback).
 #
+# --rate=N caps write throughput by piping the image through `pv -L N`
+# (pv accepts standard suffixes: 30M, 1G, etc.). Useful on drives
+# whose SLC cache fills mid-write and the controller falls back to
+# slower QLC/TLC writes that can get reordered or silently dropped.
+# Capping below the SLC drain rate keeps writes in the SLC tier.
+# Composes with --strict — the throttle just feeds dd's stdin slower.
+#
 # Hash mismatch means the flash landed corrupt bytes on the stick —
 # a common failure mode on cheap or aging USB drives (SLC cache
 # exhaustion in the back half of a sustained write, weak flash
@@ -48,11 +55,16 @@ set -euo pipefail
 
 usage() {
   cat >&2 <<EOF
-usage: $0 [--strict] /dev/sdX [image]
+usage: $0 [--strict] [--rate=N] /dev/sdX [image]
 
   --strict  use stricter dd flags (bs=1M, oflag=direct,sync,
             conv=fsync,fdatasync) for hardened writes on cheap or
             UAS-quirky USB drives. Slower but more reliable.
+
+  --rate=N  cap write rate to N bytes/sec by piping the image through
+            \`pv -L N\`. N accepts standard suffixes (e.g. 30M, 1G).
+            Useful when a drive's SLC cache fills and falls back to
+            slow QLC/TLC writes that drop or reorder.
 
   /dev/sdX  block device to flash
   image     optional path to a .raw or .iso image. when omitted,
@@ -63,9 +75,16 @@ EOF
 }
 
 STRICT=0
+RATE=
 while [[ $# -gt 0 ]]; do
   case $1 in
     --strict) STRICT=1; shift ;;
+    --rate=*) RATE="${1#--rate=}"; shift ;;
+    --rate)
+      [[ $# -ge 2 ]] || { echo "error: --rate requires a value" >&2; usage; }
+      RATE=$2
+      shift 2
+      ;;
     -h|--help) usage ;;
     -*) echo "error: unknown option: $1" >&2; usage ;;
     *) break ;;  # positional args follow
@@ -114,11 +133,14 @@ else
 fi
 SIZE=$(stat -c%s "$IMAGE")
 
+mode_label=""
+(( STRICT )) && mode_label+=" strict"
+[[ -n $RATE ]] && mode_label+=" rate=$RATE"
+echo "flashing $IMAGE ($SIZE bytes) -> $TARGET${mode_label:+ (}${mode_label# }${mode_label:+)}"
+
 if (( STRICT )); then
-  echo "flashing $IMAGE ($SIZE bytes) -> $TARGET (strict mode)"
   DD_FLAGS=(bs=1M oflag=direct,sync conv=fsync,fdatasync status=progress)
 else
-  echo "flashing $IMAGE ($SIZE bytes) -> $TARGET"
   DD_FLAGS=(bs=4M conv=fsync status=progress)
 fi
 # dd's status=progress stops updating once all bytes are handed to the
@@ -127,7 +149,13 @@ fi
 # minute or more. That's normal; let it finish. Strict mode is even
 # slower because every write call blocks on the drive's ack, not just
 # the close.
-sudo dd if="$IMAGE" of="$TARGET" "${DD_FLAGS[@]}"
+if [[ -n $RATE ]]; then
+  # pv throttles dd's stdin; with oflag=sync (in strict) writes can't
+  # outrun the input rate, so this caps actual throughput to the drive.
+  pv -L "$RATE" "$IMAGE" | sudo dd of="$TARGET" "${DD_FLAGS[@]}"
+else
+  sudo dd if="$IMAGE" of="$TARGET" "${DD_FLAGS[@]}"
+fi
 sync
 
 echo
@@ -157,9 +185,11 @@ FAIL: hash mismatch — the bytes on $TARGET do not match $IMAGE.
 Next steps:
   1. Re-flash with --strict (slower writes, fewer drive-side bugs):
      $0 --strict $TARGET${IMAGE:+ $IMAGE}
-  2. Try a different USB port / cable (transient protocol error?)
-  3. Try a different USB stick (weak cells / fake capacity?)
-  4. nix shell nixpkgs#f3 -c f3probe --destructive $TARGET
+  2. Re-flash with --strict --rate=30M (also caps to SLC-cache speed):
+     $0 --strict --rate=30M $TARGET${IMAGE:+ $IMAGE}
+  3. Try a different USB port / cable (transient protocol error?)
+  4. Try a different USB stick (weak cells / fake capacity?)
+  5. nix shell nixpkgs#f3 -c f3probe --destructive $TARGET
 EOF
   exit 2
 fi
