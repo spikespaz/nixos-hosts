@@ -121,6 +121,13 @@
       "10-brd-system-verity".repartConfig = {
         Label = lib.mkImageMediaOverride "brd-system-verity";
         Minimize = "best";
+        # Pin verity block sizes to 4 KiB. Without this, repart
+        # inherits the build-time loopback device's sector size,
+        # which inflates the hash tree and adds many small reads at
+        # boot. Empirically also fixes flaky boot on some USB Mass
+        # Storage devices.
+        VerityDataBlockSizeBytes = 4096;
+        VerityHashBlockSizeBytes = 4096;
       };
       "90-brd-persist" = {
         # Minimum GPT-aligned reservation; systemd-repart extends it
