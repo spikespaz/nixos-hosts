@@ -26,6 +26,37 @@ runs:
         install -m 0755 '${{ github.action_path }}/post-build-hook.sh' /tmp/nix-post-build-hook.sh
         : > /tmp/nix-built-paths.log
 
+    # Diagnostic probe — captures the runner's actual disk topology to
+    # the step summary so we can settle whether /mnt is a separate
+    # device (the historical Azure DS2_v2 layout with /dev/sdb1 mounted
+    # on /mnt) or just a directory on the root fs (which is what the
+    # equal `df` numbers in PR #47's first run hinted at). Kept on
+    # this branch for posterity even though the bind-mount mitigation
+    # was abandoned.
+    - name: Probe filesystem topology
+      shell: bash
+      run: |
+        summary="$GITHUB_STEP_SUMMARY"
+        # Tee everything: the step summary on the run page is the
+        # human-friendly view, but stdout in the job log is what we
+        # can fetch via `gh api .../logs` after the fact.
+        {
+          echo '### Filesystem topology probe'
+          echo '```'
+          echo '# df -hT / /mnt'
+          df -hT / /mnt 2>&1 || true
+          echo
+          echo '# findmnt --target / --target /mnt --output SOURCE,TARGET,FSTYPE,SIZE,USED,AVAIL'
+          findmnt --target / --target /mnt --output SOURCE,TARGET,FSTYPE,SIZE,USED,AVAIL 2>&1 || true
+          echo
+          echo "# mount | grep -E ' / | /mnt '"
+          mount | grep -E ' / | /mnt ' 2>&1 || true
+          echo
+          echo '# lsblk -f'
+          lsblk -f 2>&1 || true
+          echo '```'
+        } | tee -a "$summary"
+
     # Hosted GHA runners expose ~14 GB free on / but ~70 GB on /mnt
     # (the Azure VM's ephemeral data disk). Full multi-variant brdboot
     # closures plus systemd-repart/mkfs scratch can hit ENOSPC on /
