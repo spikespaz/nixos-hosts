@@ -44,19 +44,41 @@ jobs:
         with:
           cache-name: brdboot-x86_64
 
-      - name: ephemeral-x86_64-linux
+      - name: Build ephemeral-x86_64-linux
+        id: build-ephemeral
         uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.brdboot.config.system.build.images.ephemeral
           artifact-name: ephemeral-x86_64-linux
-          artifact-path: result-ephemeral-x86_64-linux/iso/*.iso
 
-      - name: mutable-x86_64-linux
+      - name: Upload ephemeral-x86_64-linux
+        if: always()
+        uses: ./.github/actions/nix-upload
+        with:
+          artifact-name: ephemeral-x86_64-linux
+          artifact-path: result-ephemeral-x86_64-linux/iso/*.iso
+          hash: ${{ steps.build-ephemeral.outputs.hash }}
+          drvname: ${{ steps.build-ephemeral.outputs.drvname }}
+          skipped: ${{ steps.build-ephemeral.outputs.skipped }}
+          dedup-url: ${{ steps.build-ephemeral.outputs.dedup-url }}
+
+      - name: Build mutable-x86_64-linux
+        id: build-mutable
         uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.brdboot.config.system.build.images.mutable
           artifact-name: mutable-x86_64-linux
+
+      - name: Upload mutable-x86_64-linux
+        if: always()
+        uses: ./.github/actions/nix-upload
+        with:
+          artifact-name: mutable-x86_64-linux
           artifact-path: result-mutable-x86_64-linux/*.raw
+          hash: ${{ steps.build-mutable.outputs.hash }}
+          drvname: ${{ steps.build-mutable.outputs.drvname }}
+          skipped: ${{ steps.build-mutable.outputs.skipped }}
+          dedup-url: ${{ steps.build-mutable.outputs.dedup-url }}
 
       # The verity-store module builds a three-derivation pipeline:
       #   intermediateImage (partitions minus ESP)
@@ -64,19 +86,41 @@ jobs:
       #       → finalImage (injects UKI into ESP)
       # The regular system.build.image of the immutable variant is
       # non-bootable (empty ESP) by design — we build finalImage.
-      - name: immutable-x86_64-linux
+      - name: Build immutable-x86_64-linux
+        id: build-immutable
         uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.brdboot.config.system.build.images.immutable.passthru.config.system.build.finalImage
           artifact-name: immutable-x86_64-linux
-          artifact-path: result-immutable-x86_64-linux/*.raw
 
-      - name: sealed-x86_64-linux
+      - name: Upload immutable-x86_64-linux
+        if: always()
+        uses: ./.github/actions/nix-upload
+        with:
+          artifact-name: immutable-x86_64-linux
+          artifact-path: result-immutable-x86_64-linux/*.raw
+          hash: ${{ steps.build-immutable.outputs.hash }}
+          drvname: ${{ steps.build-immutable.outputs.drvname }}
+          skipped: ${{ steps.build-immutable.outputs.skipped }}
+          dedup-url: ${{ steps.build-immutable.outputs.dedup-url }}
+
+      - name: Build sealed-x86_64-linux
+        id: build-sealed
         uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.brdboot.config.system.build.images.sealed
           artifact-name: sealed-x86_64-linux
+
+      - name: Upload sealed-x86_64-linux
+        if: always()
+        uses: ./.github/actions/nix-upload
+        with:
+          artifact-name: sealed-x86_64-linux
           artifact-path: result-sealed-x86_64-linux/*.raw
+          hash: ${{ steps.build-sealed.outputs.hash }}
+          drvname: ${{ steps.build-sealed.outputs.drvname }}
+          skipped: ${{ steps.build-sealed.outputs.skipped }}
+          dedup-url: ${{ steps.build-sealed.outputs.dedup-url }}
 
       # Export all build closures (excluding the images themselves) to
       # a local binary cache for the next run.
@@ -99,12 +143,23 @@ jobs:
         with:
           cache-name: brdboot-aarch64
 
-      - name: ephemeral-aarch64-linux
+      - name: Build ephemeral-aarch64-linux
+        id: build-ephemeral
         uses: ./.github/actions/nix-build
         with:
           attr: nixosConfigurations.brdboot-aarch64.config.system.build.images.ephemeral
           artifact-name: ephemeral-aarch64-linux
+
+      - name: Upload ephemeral-aarch64-linux
+        if: always()
+        uses: ./.github/actions/nix-upload
+        with:
+          artifact-name: ephemeral-aarch64-linux
           artifact-path: result-ephemeral-aarch64-linux/iso/*.iso
+          hash: ${{ steps.build-ephemeral.outputs.hash }}
+          drvname: ${{ steps.build-ephemeral.outputs.drvname }}
+          skipped: ${{ steps.build-ephemeral.outputs.skipped }}
+          dedup-url: ${{ steps.build-ephemeral.outputs.dedup-url }}
 
       - uses: ./.github/actions/nix-cache-export
         if: always()
