@@ -5,6 +5,50 @@ description: Procedures for finalizing and merging a set of PR branches. Two mod
 
 # PR Merge Procedure
 
+## Stack construction
+
+When multiple PRs are in flight, they form a linear chain for sequential rebase merge. The goal: merging PRs in order produces a clean linear history where commit hashes are preserved through each merge.
+
+### Mapping commits to PRs
+
+Each commit belongs to exactly one PR by semantic concern. Map commits to PRs before creating branches. A commit belongs to the PR whose purpose it serves, not the branch it happened to land on during development.
+
+### Branch naming
+
+Do not create a GitHub PR at the same time as the first commit. The scope often changes as work progresses, and branch names on GitHub are effectively permanent (renaming requires closing and reopening PRs, breaking references).
+
+When starting new work locally, use a working name based on initial intent (`claude/<topic>` or `claude/wip-<topic>`). Iterate until the scope is clear, then rename the branch before running `gh pr create`:
+
+```bash
+git branch -m claude/wip-old-name claude/<final-name>
+```
+
+**Exception:** When splitting off an existing reviewed PR, the scope is already known — name immediately.
+
+### Creating branches
+
+For initial construction of a stack, cherry-pick commits into purpose-built branches:
+
+```bash
+# First PR: fork from master
+git checkout -B <branch1> origin/master
+git cherry-pick <commits...>
+
+# Subsequent PRs: fork from the previous
+git checkout -B <branch2> <branch1>
+git cherry-pick <commits...>
+```
+
+Cherry-pick is appropriate for initial construction (selecting specific commits into new branches). Rebase is appropriate for maintenance (keeping existing branches current). See `branch-rebase` for the cascade procedure.
+
+### Base branch policy
+
+All PR bases target master. Merge order is enforced by convention (documented in PR bodies), not by base targeting. Setting prerequisite branches as bases causes commits to land on feature branches when merged out of order.
+
+### Reopen, don't recreate
+
+When correcting a mistake on a closed PR, reopen the existing PR rather than creating a new one. Reopening preserves the review history and comment threads.
+
 ## Batch mode (user-driven)
 
 The user reviews and merges PRs one at a time. After each merge, the agent rebases all remaining branches onto the updated master to confirm that merged content disappears from diffs.
@@ -43,7 +87,7 @@ The user reviews and merges PRs one at a time. After each merge, the agent rebas
    ```
    Only force-push after verifying the rebase is clean. If anything looks wrong, report to the user and wait.
 
-7. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes.
+7. **Agent checks PR title and body.** After every push, read the PR title, body, and checkboxes. Verify they match the current branch state — commit counts, file references, renamed identifiers, stale PR cross-references. Update automatically and notify the user of changes. Merge order notes are preserved for posterity — when a dependency merges, mark it as merged in the note rather than removing it.
 
 8. **Repeat** from step 2 until all PRs are merged.
 
@@ -159,4 +203,30 @@ Keep PR titles and bodies current as content changes. Titles must reflect the ac
 
 ## After all merges
 
-Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. For WSL sync, follow the `wsl-nix-bridge` skill — rebase WSL branches (never reset), update worktree-checked-out branches from inside the worktree, use heredocs to avoid path mangling. Delete merged branches only after verifying content reached master (see `branch-rebase` skill).
+Sync all clones (WSL, Windows worktrees) by fetching origin and rebasing local branches. For WSL sync, follow the `wsl-nix-bridge` skill — rebase WSL branches (never reset), update worktree-checked-out branches from inside the worktree, use heredocs to avoid path mangling.
+
+Delete merged branches (local and remote) only after verifying content reached master (see `branch-rebase` skill):
+
+```bash
+git branch -D <merged-branch>
+git push origin --delete <merged-branch>
+```
+
+If a cascade rebase empties a branch (all commits absorbed), ask the user whether to close its PR. Do not close or delete automatically — the branch may be needed later.
+
+Before declaring any PR ready for merge, check top-level PR comments (not just review threads) for unresolved feedback:
+
+```bash
+gh api repos/{owner}/{repo}/issues/{number}/comments
+```
+
+### CI validation branch (optional)
+
+When the user wants to validate the combined state of multiple PRs against CI, offer to create a disposable CI branch at the tip of the stack:
+
+```bash
+git checkout -B u/<user>/<name> <last-pr-branch>
+git push origin u/<user>/<name>
+```
+
+This branch is never merged — individual PRs are merged in order. Delete it when the stack is fully merged. Use `git checkout -B` to rebuild after cascade rebases (this is not a working branch, so the "rebase over reset" principle does not apply).
