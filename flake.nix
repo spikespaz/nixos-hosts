@@ -1,13 +1,14 @@
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs-release.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixos-wsl = {
       url = "github:nix-community/NixOS-WSL/main";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, nixos-wsl, ... }:
+  outputs = { self, nixpkgs, nixpkgs-release, nixos-wsl, ... }:
     let
       inherit (nixpkgs) lib;
       eachSystem = lib.genAttrs [ "x86_64-linux" "aarch64-linux" ];
@@ -64,6 +65,14 @@
                 pkgs = pkgsCrossFor buildSystem hostSystem;
               }).config.system.build.images;
             }) brdbootFor;
+          tools = {
+            brdboot-verify-image =
+              pkgs.callPackage ./packages/brdboot-verify-image { };
+            brdboot-verify-self =
+              pkgs.callPackage ./packages/brdboot-verify-self { };
+            brdboot-pam-credential =
+              pkgs.callPackage ./packages/brdboot-pam-credential { };
+          };
           tests = lib.optionalAttrs (buildSystem == "x86_64-linux") {
             # Clean immutable image with 4 bytes flipped 4 KiB into
             # brd-system — guaranteed inside the first erofs data
@@ -106,8 +115,31 @@
                       seek="$seekBytes" oflag=seek_bytes conv=notrunc
                 echo "tamper landed"
               '';
+
+            # Clean immutable image rebuilt with the initrd's systemd
+            # swapped to an older release. /usr is unchanged, so
+            # dm-verity and the UKI cmdline still agree — the tamper
+            # lives entirely in the initrd, which dm-verity doesn't
+            # cover.
+            brdboot-immutable-tampered-initrd =
+              (self.nixosConfigurations.brdboot.extendModules {
+                modules = [{
+                  boot.initrd.systemd.package = lib.mkForce
+                    nixpkgs-release.legacyPackages.${buildSystem}.systemd;
+                }];
+              }).config.system.build.images.immutable
+                .passthru.config.system.build.finalImage;
           };
-        in native // cross // tests) pkgsFor;
+        in native // cross // tools // tests) pkgsFor;
+
+      apps = lib.mapAttrs (buildSystem: _: {
+        brdboot-verify-image = {
+          type = "app";
+          program = "${
+              self.packages.${buildSystem}.brdboot-verify-image
+            }/bin/brdboot-verify-image";
+        };
+      }) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
     };

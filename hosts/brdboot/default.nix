@@ -1,9 +1,14 @@
 { pkgs, ... }: {
   imports = [
+    # Variant deferred modules
     ./ephemeral.nix
     ./mutable.nix
     ./immutable.nix
     ./sealed.nix
+
+    # Shared infrastructure (gated behind brdboot.* options, default off).
+    ./homed.nix
+    ./single-prompt-boot.nix
   ];
 
   system.stateVersion = "25.05";
@@ -69,9 +74,79 @@
   environment.systemPackages = with pkgs; [
     hfsprogs  # mkfs.hfsplus, fsck.hfsplus
     udftools  # mkudffs, udfinfo, udflabel
+
+    # Partition-table reconstruction (`testdisk`) + file carving (`photorec`).
+    testdisk
+
+    # SMART disk health: `smartctl -a /dev/sdX` triages drive failures.
+    smartmontools
+
+    # NTFS userspace: `ntfsfix` clears dirty bit, `ntfsundelete`
+    # recovers MFT entries — offline complement to kernel ntfs3.
+    ntfs3g
+
+    # Multi-pass secure disk wipe (DoD 5220.22-M, Gutmann, PRNG).
+    nwipe
+
+    # ATA/SATA control: `hdparm -I` dumps identify block;
+    # `--security-erase` triggers native ATA secure-erase on SSDs.
+    hdparm
+
+    # In NixOS defaults; listed for `blkdiscard(8)` (TRIM erasure) and
+    # `wipefs(8)` (strip filesystem signatures).
+    util-linux
+
+    # GPT table inspection and repair: `sgdisk -p /dev/sdX` prints the
+    # table, `--verify` checks CRCs + backup header, `-o` zeros it.
+    gptfdisk
+
+    # LUKS open/format and dm-verity verify/dump (`cryptsetup`,
+    # `veritysetup`). Inspects encrypted or verity-protected recovery
+    # targets in place — sealed brd-system, immutable hash trees.
+    cryptsetup
   ];
 
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  nix.settings = {
+    experimental-features = [
+      "nix-command"
+      "flakes"
+      # Dynamically allocate build UIDs from user namespaces
+      # (872415232+ on Linux) instead of creating persistent
+      # nixbld{1..N} entries in /etc/passwd (NixOS default: 32
+      # system users at UIDs 30001-30032). NixOS's nix-daemon module
+      # makes nrBuildUsers conditional on this flag and falls back
+      # to 0 when it is set — nix builds still work because the
+      # sandbox allocates UIDs on demand.
+      #
+      # The motivation is upstream of brdboot: systemd-userdb
+      # classifies any user with UID >= 1000 (systemd's
+      # SYSTEM_UID_MAX) as "regular" and systemd-homed-firstboot
+      # refuses to prompt for account creation when regular users
+      # already exist. nixbld's default UID of 30000 trips that
+      # check. Removing the persistent users entirely avoids the
+      # conflict; downstream homed.nix likewise needs no
+      # services.userdbd.silenceHighSystemUsers workaround since
+      # there are no high system users to silence warnings about.
+      #
+      # Recovery images otherwise wouldn't need persistent build
+      # users at runtime — immutable/sealed stores are kernel-
+      # enforced RO (verity / erofs-in-LUKS); ephemeral is squashfs
+      # RO; mutable alone could build, and only after remounting
+      # the store rw. Build capability is preserved via namespace-
+      # allocated UIDs anyway, so field rebuilds aren't precluded:
+      # nix stays a first-class tool on the deployed image.
+      #
+      # Experimental feature. Adoption decision, known issues, and
+      # exit criteria tracked in #41. Fallback if the feature
+      # regresses: drop this list entry and the auto-allocate-uids
+      # toggle below, set ids.uids.nixbld = 350.
+      "auto-allocate-uids"
+    ];
+
+    # Toggle the actual behavior — the experimental-features entry
+    # above merely permits it.
+    auto-allocate-uids = true;
+  };
 
   # Stopgap so HW-test logins work before homed-based account creation
   # lands. Flashed images accept `root` / `password` at the tty1 prompt,
