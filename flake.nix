@@ -64,6 +64,10 @@
                 pkgs = pkgsCrossFor buildSystem hostSystem;
               }).config.system.build.images;
             }) brdbootFor;
+          tools = {
+            brdboot-pam-credential =
+              pkgs.callPackage ./packages/brdboot-pam-credential { };
+          };
           tests = lib.optionalAttrs (buildSystem == "x86_64-linux") {
             # Clean immutable image with 4 bytes flipped 4 KiB into
             # brd-system — guaranteed inside the first erofs data
@@ -107,7 +111,7 @@
                 echo "tamper landed"
               '';
           };
-        in native // cross // tests) pkgsFor;
+        in native // cross // tools // tests) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
     };
