@@ -1,25 +1,27 @@
 name: Nix Build
-description: Build a nix attribute with artifact deduplication and upload
+description: Build a nix attribute and expose dedup metadata for a downstream upload
 
 inputs:
   attr:
     description: "Nix attribute to build"
     required: true
   artifact-name:
-    description: "Base name for the artifact"
+    description: "Logical artifact name — used to look up an existing un-expired artifact for dedup, and to slice per-variant lines out of the shared post-build-hook log"
     required: true
-  upload-artifact:
-    description: "Upload build result as a GitHub artifact"
-    required: false
-    default: "true"
-  artifact-path:
-    description: "Glob path to upload from result"
-    required: false
-    default: ""
-  retention-days:
-    description: "Artifact retention in days"
-    required: false
-    default: "7"
+
+outputs:
+  hash:
+    description: "First segment of the derivation basename (its input hash), stable across re-runs of the same inputs"
+    value: ${{ steps.drv-hash.outputs.hash }}
+  drvname:
+    description: "Derivation name portion of the drv basename (everything after the hash-). Pair with an extension to form a user-facing filename."
+    value: ${{ steps.drv-hash.outputs.drvname }}
+  skipped:
+    description: "`true` when an existing un-expired artifact for artifact-name+hash was found and the build was skipped"
+    value: ${{ steps.check-existing.outputs.skipped }}
+  dedup-url:
+    description: "Link to the existing artifact when `skipped` is `true`; empty otherwise"
+    value: ${{ steps.check-existing.outputs.dedup-url }}
 
 runs:
   using: composite
@@ -32,18 +34,12 @@ runs:
         drv_base=$(basename "$drv_path" .drv)
         drv_hash=${drv_base%%-*}
         drv_name=${drv_base#*-}
-        case '${{ inputs.artifact-path }}' in
-          *.iso) ext=.iso ;;
-          *.raw) ext=.raw ;;
-          *)     ext= ;;
-        esac
         echo "hash=$drv_hash" >> "$GITHUB_OUTPUT"
-        echo "filename=$drv_name$ext" >> "$GITHUB_OUTPUT"
+        echo "drvname=$drv_name" >> "$GITHUB_OUTPUT"
         echo "Cache key: drv-$drv_hash"
 
     - name: Check for existing artifact
       id: check-existing
-      if: inputs.upload-artifact == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
@@ -68,53 +64,14 @@ runs:
       if: steps.check-existing.outputs.skipped != 'true'
       shell: bash
       run: |
-        # Snapshot the post-build-hook log so the summary step can
-        # slice out just the paths realized by this variant's build.
-        # `trap ... EXIT` captures the slice even when `nix build`
-        # fails, so the summary on a broken run still shows what got
-        # partially realized before the failure.
+        # Snapshot the post-build-hook log so the downstream nix-upload
+        # summary can slice out just the paths realized by this variant.
+        # `trap ... EXIT` captures the slice even when `nix build` fails,
+        # so the summary on a broken run still shows what got partially
+        # realized before the failure.
         log='/tmp/nix-built-paths-${{ inputs.artifact-name }}.log'
         before=$(wc -l < /tmp/nix-built-paths.log 2>/dev/null || echo 0)
         trap 'tail -n +$((before + 1)) /tmp/nix-built-paths.log > "$log" 2>/dev/null || true' EXIT
         nix build '.#${{ inputs.attr }}' \
           --out-link 'result-${{ inputs.artifact-name }}' \
           --print-build-logs
-
-    - name: Upload artifact
-      id: upload
-      if: inputs.upload-artifact == 'true' && steps.check-existing.outputs.skipped != 'true' && success()
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ inputs.artifact-name }}-${{ steps.drv-hash.outputs.hash }}
-        path: ${{ inputs.artifact-path }}
-        retention-days: ${{ inputs.retention-days }}
-
-    - name: Build summary
-      if: always()
-      shell: bash
-      run: |
-        name='${{ inputs.artifact-name }}'
-        filename='${{ steps.drv-hash.outputs.filename }}'
-        summary="$GITHUB_STEP_SUMMARY"
-        echo "### $name" >> "$summary"
-        if [ "${{ steps.check-existing.outputs.skipped }}" = "true" ]; then
-          echo "Deduplicated: [$filename](${{ steps.check-existing.outputs.dedup-url }})" >> "$summary"
-        elif [ "${{ steps.upload.outcome }}" = "success" ]; then
-          echo "Built: [$filename](${{ steps.upload.outputs.artifact-url }})" >> "$summary"
-        else
-          echo "Build failed." >> "$summary"
-        fi
-        log="/tmp/nix-built-paths-$name.log"
-        if [ -s "$log" ]; then
-          count=$(wc -l < "$log")
-          cat >> "$summary" <<EOF
-
-        <details><summary>$count newly-realized store paths</summary>
-
-        \`\`\`
-        $(cat "$log")
-        \`\`\`
-
-        </details>
-        EOF
-        fi

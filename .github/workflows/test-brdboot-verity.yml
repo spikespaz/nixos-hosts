@@ -12,7 +12,7 @@ name: Test brdboot dm-verity
 #     pushes — the job's `if` gate filters non-labeled runs)
 #
 # Reuses the shared composite actions from `Build brdboot images`:
-#   nix-setup, nix-build, nix-cache-export.
+#   nix-setup, nix-build, nix-upload, nix-cache-export.
 
 on:
   workflow_dispatch:
@@ -47,12 +47,23 @@ jobs:
           # unique work this job does on top of the shared closure.
           cache-name: brdboot-x86_64
 
-      - name: brdboot-immutable-tampered-brd-system
+      - name: Build brdboot-immutable-tampered-brd-system
+        id: build-tampered
         uses: ./.github/actions/nix-build
         with:
           attr: packages.x86_64-linux.brdboot-immutable-tampered-brd-system
           artifact-name: brdboot-immutable-tampered-brd-system
+
+      - name: Upload brdboot-immutable-tampered-brd-system
+        if: always()
+        uses: ./.github/actions/nix-upload
+        with:
+          artifact-name: brdboot-immutable-tampered-brd-system
           artifact-path: result-brdboot-immutable-tampered-brd-system/*.raw
+          hash: ${{ steps.build-tampered.outputs.hash }}
+          drvname: ${{ steps.build-tampered.outputs.drvname }}
+          skipped: ${{ steps.build-tampered.outputs.skipped }}
+          dedup-url: ${{ steps.build-tampered.outputs.dedup-url }}
 
       - name: Export binary cache
         uses: ./.github/actions/nix-cache-export

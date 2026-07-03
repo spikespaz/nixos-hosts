@@ -1,0 +1,78 @@
+name: Nix Upload
+description: Upload a nix-build result as a GHA artifact and write the per-variant build summary
+
+inputs:
+  artifact-name:
+    description: "Logical artifact name — must match the value passed to nix-build"
+    required: true
+  artifact-path:
+    description: "Glob path under the result symlink to upload"
+    required: true
+  retention-days:
+    description: "Artifact retention in days"
+    required: false
+    default: "7"
+  hash:
+    description: "Derivation hash from nix-build's `hash` output"
+    required: true
+  drvname:
+    description: "Derivation name from nix-build's `drvname` output"
+    required: true
+  skipped:
+    description: "Dedup result from nix-build's `skipped` output (`true` suppresses the upload)"
+    required: true
+  dedup-url:
+    description: "Dedup URL from nix-build's `dedup-url` output; used in the summary when `skipped` is `true`"
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: "Upload ${{ inputs.artifact-name }}"
+      id: upload
+      if: success() && inputs.skipped != 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}-${{ inputs.hash }}
+        path: ${{ inputs.artifact-path }}
+        retention-days: ${{ inputs.retention-days }}
+
+    - name: "Summarize ${{ inputs.artifact-name }}"
+      if: always()
+      shell: bash
+      run: |
+        name='${{ inputs.artifact-name }}'
+        drvname='${{ inputs.drvname }}'
+        # Infer the user-facing extension from the artifact-path glob
+        # so the summary shows a meaningful filename rather than the
+        # bare derivation name.
+        case '${{ inputs.artifact-path }}' in
+          *.iso) ext=.iso ;;
+          *.raw) ext=.raw ;;
+          *)     ext= ;;
+        esac
+        filename="${drvname}${ext}"
+        summary="$GITHUB_STEP_SUMMARY"
+        echo "### $name" >> "$summary"
+        if [ "${{ inputs.skipped }}" = "true" ]; then
+          echo "Deduplicated: [$filename](${{ inputs.dedup-url }})" >> "$summary"
+        elif [ "${{ steps.upload.outcome }}" = "success" ]; then
+          echo "Built: [$filename](${{ steps.upload.outputs.artifact-url }})" >> "$summary"
+        else
+          echo "Build failed." >> "$summary"
+        fi
+        log="/tmp/nix-built-paths-$name.log"
+        if [ -s "$log" ]; then
+          count=$(wc -l < "$log")
+          cat >> "$summary" <<EOF
+
+        <details><summary>$count newly-realized store paths</summary>
+
+        \`\`\`
+        $(cat "$log")
+        \`\`\`
+
+        </details>
+        EOF
+        fi
