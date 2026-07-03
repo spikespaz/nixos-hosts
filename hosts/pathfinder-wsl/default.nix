@@ -9,6 +9,21 @@
   wsl.startMenuLaunchers = true;
   wsl.useWindowsDriver = true;
 
+  # USB/IP passthrough so arbitrary USB devices bound on the Windows
+  # side (via usbipd-win) appear as real /dev/sdX, /dev/ttyUSB*, etc.
+  # inside WSL rather than only the whole-disk bare-mount form.
+  #
+  # Windows-side setup: `winget install dorssel.usbipd-win`. Per-device
+  # attach from an elevated PowerShell:
+  #   usbipd list
+  #   usbipd bind   --busid <N-N>
+  #   usbipd attach --wsl --busid <N-N>
+  #
+  # snippetIpAddress defaults to reading the eth0 gateway, which is
+  # correct for NAT networking; override if using networkingMode =
+  # mirrored or wsl-vpnkit.
+  wsl.usbip.enable = true;
+
   nix.settings = { experimental-features = [ "nix-command" "flakes" ]; };
 
   environment.systemPackages = with pkgs; [ fastfetch jq ];

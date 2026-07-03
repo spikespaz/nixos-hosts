@@ -64,6 +64,12 @@
                 pkgs = pkgsCrossFor buildSystem hostSystem;
               }).config.system.build.images;
             }) brdbootFor;
+          tools = {
+            brdboot-verify-image =
+              pkgs.callPackage ./packages/brdboot-verify-image { };
+            brdboot-verify-self =
+              pkgs.callPackage ./packages/brdboot-verify-self { };
+          };
           tests = lib.optionalAttrs (buildSystem == "x86_64-linux") {
             # Clean immutable image with 4 bytes flipped 4 KiB into
             # brd-system — guaranteed inside the first erofs data
@@ -107,7 +113,16 @@
                 echo "tamper landed"
               '';
           };
-        in native // cross // tests) pkgsFor;
+        in native // cross // tools // tests) pkgsFor;
+
+      apps = lib.mapAttrs (buildSystem: _: {
+        brdboot-verify-image = {
+          type = "app";
+          program = "${
+              self.packages.${buildSystem}.brdboot-verify-image
+            }/bin/brdboot-verify-image";
+        };
+      }) pkgsFor;
 
       formatter = lib.mapAttrs (_: pkgs: pkgs.nixfmt-classic) pkgsFor;
     };
