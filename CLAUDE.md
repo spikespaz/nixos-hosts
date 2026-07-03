@@ -38,6 +38,8 @@ The skill file teaches the format. These guidelines teach judgment:
 - **Granularity is the real discipline.** The format is easy. Committing every edit, immediately, with the right scope — that is the hard part. Default to smaller commits. If you catch yourself batching, stop and commit what you have.
 - **The history is the deliverable.** A clean history with well-scoped commits is more valuable than the final file state. When in doubt, make the history more granular, not less.
 - **Never assume the environment.** Ask before using tools, interpreters, or services that haven't been confirmed available. This applies to subagents too.
+- **Audit your own commits.** The pathwise-commit skill's pre-commit self-check is a blocking gate, not a suggestion. Before every commit, test the summary against the full spec — naming, phrasing, granularity, mechanical consequences, and the "What NOT To Do" list. After any rebase that rewords or squashes, spot-check the affected summaries against their diffs.
+- **Always end files with a newline.** Every file must have a trailing newline at EOF. No exceptions.
 
 ### Why These Rules Exist
 
@@ -50,3 +52,34 @@ The git disciplines in this repository's skills (`branch-rebase`, `wsl-nix-bridg
 - **Verify content before deleting merged branches** catches unpushed local work that survived a PR merge with different hashes.
 
 Do not follow these rules mechanically. Understand the failure mode each one prevents, so you can apply the same reasoning to situations the rules don't explicitly cover.
+
+## CI and Branch Management
+
+- **Push and iterate autonomously on feature branches.** Do not ask for confirmation before pushing, force-pushing (with lease), or re-running CI on non-main branches. The user expects you to drive the feedback loop.
+- **Clean up after merge.** Delete merged branches (local and remote) and rebase remaining branches onto updated master. Follow the `branch-rebase` skill's deletion verification procedure.
+- **All PR bases target master.** Even when PRs form a dependency chain, each PR's base branch on GitHub is `master`. Merge order is enforced by convention (documented in PR bodies), not by base targeting. Setting prerequisite branches as bases causes commits to land on feature branches when merged out of order.
+
+## Documentation
+
+- **Link rendered versions after pushing.** When documentation or markdown changes are pushed, provide the GitHub rendered URL for each affected file so the user can verify formatting: `https://github.com/<owner>/<repo>/blob/<branch>/<file>`.
+- **Use full PR URLs.** Always reference PRs and issues with full `https://github.com/...` URLs, not `owner/repo#N` shorthand. The shorthand is not clickable in the terminal.
+
+## nixpkgs Source Paths
+
+<!-- Temporary location: project-specific quirk knowledge that agents discover
+     while researching. Keeping here until a better mechanism for accumulating
+     path knowledge exists — this table could grow large. -->
+
+Common paths under the nixpkgs store tree (`nix eval --raw nixpkgs#path`):
+
+| Path | Contains |
+|---|---|
+| `nixos/modules/installer/cd-dvd/` | ISO image builder, installer profiles |
+| `nixos/modules/hardware/` | `all-hardware.nix`, firmware options |
+| `nixos/modules/image/` | `file-options.nix` (`image.baseName`, etc.) |
+| `nixos/modules/misc/` | `version.nix` (distroName, label, variant_id) |
+| `nixos/lib/` | `make-iso9660-image.{nix,sh}`, `eval-config.nix` |
+
+## Skill Provenance
+
+The `pathwise-commit` and `pathwise-audit` skills originate from [spikespaz/claude](https://github.com/spikespaz/claude). When updating these skills, check the source repo for newer versions. All other skills (`branch-rebase`, `wsl-nix-bridge`, `pr-merge-procedure`, `pr-minification-split`, `nix-architecture`, `formatter-conflict-resolution`) are local to this repository.

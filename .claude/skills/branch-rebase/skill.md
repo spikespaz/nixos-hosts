@@ -55,6 +55,32 @@ When a branch mixes two independent topics:
 
 Both branches now cleanly extend master with only their own commits.
 
+## Inserting a commit between existing commits
+
+Use the `break` keyword in the interactive rebase todo list to pause between picks:
+
+```bash
+git rebase -i origin/master
+```
+
+In the todo editor, add `break` where the new commit should go:
+
+```
+pick abc1234 first commit
+break
+pick def5678 second commit
+```
+
+Git replays the first commit, then stops. You are on the branch (not detached HEAD), so create the new commit normally:
+
+```bash
+git add <files>
+git commit -m "..."
+git rebase --continue
+```
+
+This is cleaner than marking a commit as `edit` and committing during the edit step — `edit` is for modifying an existing commit, `break` is for inserting between them.
+
 ## Splitting a commit
 
 When a commit bundles two independent changes (fails the "and" test), split it during interactive rebase:
@@ -115,6 +141,42 @@ git checkout -B <branch> <good-ref>
 
 The bad state remains in the reflog if you need it later.
 
+## Commit age and rebase scope
+
+When rebasing, consider the age of commits being rewritten:
+
+- **Commits older than 2 days:** Do not rebase. These represent solidified work with established timestamps that mark natural pauses, task switches, or review cycles. Rewriting them destroys timeline provenance.
+- **Commits 1–2 days old:** Borderline. Ask the user before rebasing unless the rebase is onto a freshly merged upstream and the commits are clearly from the same work session.
+- **Commits from the current session:** Safe to rebase freely.
+
+The purpose of this rule is to preserve the natural timeline of work. Squashing a week of incremental commits into one destroys evidence of the development process — when pauses happened, when direction changed, when reviews occurred. Temporary commits (`f`, `s`, `r`, `d` prefixed) are an exception: they are explicitly marked for rebase regardless of age.
+
+## Cascade rebase for stacked branches
+
+When multiple branches form a linear chain (each forked from the previous), rebasing one branch requires rebasing every downstream branch. A rebase cascade is atomic — do not push until all branches in the chain are rebased and verified.
+
+For each branch in order:
+
+```bash
+git checkout <branch>
+git rebase <parent-branch>
+git log --oneline HEAD --not <parent-branch>
+```
+
+If any branch becomes empty after rebase (all commits absorbed by upstream), its PR can be closed.
+
+## Force-push rejection after external change
+
+If `--force-with-lease` rejects a push, it means the remote branch changed since your last fetch. Do not use `--force` to bypass this — fetch first, then rebase onto the updated remote:
+
+```bash
+git fetch origin
+git rebase origin/master   # or the appropriate upstream
+git push origin <branch> --force-with-lease
+```
+
+`--force-with-lease` exists to prevent overwriting changes you haven't seen. Bypassing it with `--force` erases whatever changed on the remote without checking. Always fetch and rebase first — if the rebase is correct, `--force-with-lease` will succeed.
+
 ## Prefer rebase over manual cherry-picks
 
 **Always use `git rebase` instead of reconstructing a branch from scratch with cherry-picks.** Rebase:
@@ -150,6 +212,30 @@ git diff <branch> origin/master --stat
 ```
 
 Empty diff and zero remaining commits confirms safe deletion. If any commits survive or the diff is non-empty, the branch has content not on master — ask the user before deleting.
+
+## Rebase conflicts are not merge conflicts
+
+In a merge, both sides are peers — you combine them. In a rebase, one side is the truth (the new base) and the other is being replayed onto it. Do not apply merge-conflict intuition to rebase conflicts.
+
+When a rebase step conflicts:
+
+1. **Check if it's a duplicate.** If the commit's changes already exist on the new base (from a prior merge or cherry-pick), skip it: `git rebase --skip`.
+2. **Check if it's a formatting conflict.** If the only differences are whitespace or style, use the `formatter-conflict-resolution` skill.
+3. **If it's a real semantic conflict**, the replayed commit needs adaptation to the new base. Take the base version (`--ours` in rebase context is the new base) and apply only the semantic change from the replayed commit. Do not try to "keep both sides" — that is merge thinking.
+4. **If unsure, abort.** `git rebase --abort` and report. A wrong resolution silently corrupts history; aborting preserves it.
+
+The most common mistake is treating a rebase conflict like a merge and manually combining both sides. This produces duplicate code, stale references, or mixed formatting. When in doubt, skip or abort — never guess.
+
+### After any `--ours` or `--theirs` resolution
+
+Taking one side wholesale discards the other side's changes. After resolving with `--ours` or `--theirs`, diff the resolved file against the discarded side to confirm nothing semantic was lost:
+
+```bash
+# After git checkout --ours <file>:
+git diff REBASE_HEAD -- <file>   # shows what the replayed commit contributed
+```
+
+Every hunk in that diff is content you chose to discard. Verify each one is either a duplicate of what's already on the base, or something intentionally dropped. If any hunk contains a semantic change you didn't mean to lose, the resolution is wrong — amend before continuing.
 
 ## Never re-create changes manually
 

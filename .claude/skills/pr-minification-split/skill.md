@@ -78,3 +78,7 @@ Reference the full PR in the body. Explain:
 claude/<topic>           # full branch (existing PR)
 claude/<topic>-minimal   # minimal subset branch (new PR)
 ```
+
+## After merge
+
+When the minimal PR merges, the full branch rebases onto master and the minimal branch's commits drop naturally. After the full PR also merges, delete the `-minimal` branch following the `branch-rebase` deletion verification procedure.
