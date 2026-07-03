@@ -44,7 +44,7 @@
         Type = "linux-generic";
         Format = "erofs";
         Encrypt = "key-file";
-        Minimize = "guess";
+        Minimize = "best";
         Label = "brd-system";
       };
     };
